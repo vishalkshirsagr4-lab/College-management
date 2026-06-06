@@ -54,7 +54,7 @@ const getMyStudentProfile = async (req, res, next) => {
   try {
     const student = await Student.findOne({ userId: req.user.id }).populate('userId', 'name email role profileImage');
     if (!student) {
-      return res.status(404).json({ message: 'Student profile not found' });
+      return res.status(200).json({ student: null });
     }
     res.status(200).json({ student });
   } catch (error) {

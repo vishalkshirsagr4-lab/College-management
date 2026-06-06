@@ -1,53 +1,41 @@
 import { useEffect, useState } from 'react';
-import { getAttendance, getNotices, getResults, getFees, getStudentProfile } from '../../api/student.api';
+import { getStudentDashboard } from '../../api/student.api';
 
 const StudentDashboard = () => {
-  const [profile, setProfile] = useState(null);
-  const [attendanceCount, setAttendanceCount] = useState(0);
-  const [notices, setNotices] = useState([]);
-  const [results, setResults] = useState([]);
-  const [fees, setFees] = useState([]);
+  const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    const loadData = async () => {
+    const load = async () => {
       try {
-        const studentRes = await getStudentProfile();
-        setProfile(studentRes.data.student);
-
-        const studentId = studentRes.data.student?._id;
-        const [attendanceRes, noticesRes, resultsRes, feesRes] = await Promise.all([
-          getAttendance(studentId),
-          getNotices(),
-          getResults(),
-          getFees(),
-        ]);
-
-        const attendanceData = attendanceRes.data.attendance || [];
-        setAttendanceCount(attendanceData.length);
-        setNotices(noticesRes.data.notices || []);
-        setResults((resultsRes.data.results || []).filter((item) => item.studentId?.toString() === studentId.toString() || item.studentId?._id?.toString() === studentId.toString()));
-        setFees((feesRes.data.fees || []).filter((item) => item.studentId?.toString() === studentId.toString() || item.studentId?._id?.toString() === studentId.toString()));
-      } catch (error) {
-        console.error('Error loading student dashboard data', error);
-        setProfile(null);
-        setNotices([]);
-        setResults([]);
-        setFees([]);
+        const res = await getStudentDashboard();
+        setDashboard(res.data.dashboard);
+      } catch (err) {
+        console.error('Error loading student dashboard data', err);
+        setErrorMsg('Failed to load dashboard. Please try again.');
+        setDashboard(null);
       } finally {
         setLoading(false);
       }
     };
-    loadData();
+
+    load();
   }, []);
 
   if (loading) {
     return <div className="page-shell">Loading student dashboard...</div>;
   }
 
-  if (!profile) {
+  if (errorMsg) {
+    return <div className="page-shell">{errorMsg}</div>;
+  }
+
+  if (!dashboard) {
     return <div className="page-shell">Student profile not found. Please complete your profile or contact admin.</div>;
   }
+
+  const { student, attendance, notices, results, fees, feesSummary } = dashboard;
 
   return (
     <div>
@@ -57,42 +45,90 @@ const StudentDashboard = () => {
           <p className="text-muted">Overview of your attendance, notices, results, and fee status.</p>
         </div>
       </div>
+
       <div className="grid grid-3">
         <div className="card card-stats">
           <h3>Attendance Records</h3>
-          <p>{attendanceCount}</p>
+          <p>{attendance?.count ?? 0}</p>
         </div>
         <div className="card card-stats">
-          <h3>Notices</h3>
-          <p>{notices.length}</p>
+          <h3>Latest Notices</h3>
+          <p>{notices?.length ?? 0}</p>
         </div>
         <div className="card card-stats">
-          <h3>Results</h3>
-          <p>{results.length}</p>
+          <h3>Recent Results</h3>
+          <p>{results?.length ?? 0}</p>
         </div>
       </div>
+
       <div className="grid grid-2">
         <div className="card card-panel">
           <h3>Profile</h3>
           <div className="profile-card">
-            <img src={profile?.userId?.profileImage?.url || 'https://via.placeholder.com/100'} alt="profile" />
+            <img
+              src={student?.userId?.profileImage?.url || student?.photo?.url || 'https://via.placeholder.com/100'}
+              alt="profile"
+            />
             <div>
-              <p className="text-muted">{profile?.userId?.name || 'Name not set'}</p>
-              <p>{profile?.usn || 'USN not set'}</p>
-              <p>{profile?.semester ? `Semester ${profile.semester}` : 'Semester not set'}</p>
+              <p className="text-muted">{student?.userId?.name || 'Name not set'}</p>
+              <p>{student?.usn || 'USN not set'}</p>
+              <p>{student?.semester ? `Semester ${student.semester}` : 'Semester not set'}</p>
             </div>
           </div>
         </div>
+
         <div className="card card-panel">
           <h3>Fee status</h3>
-          {fees.length > 0 ? (
+          <div className="fee-summary">
+            <p className="text-muted">Total: ₹{feesSummary?.totalAmount ?? 0}</p>
+            <p className="text-muted">Paid: ₹{feesSummary?.paidAmount ?? 0}</p>
+            <p className="text-muted">Unpaid: ₹{feesSummary?.unpaidAmount ?? 0}</p>
+          </div>
+
+          {fees?.length > 0 ? (
             <ul className="list-muted">
-              {fees.map((fee) => (
-                <li key={fee._id}>{fee.description || 'Fee record'} — {fee.status || 'Unknown'}</li>
+              {fees.slice(0, 6).map((fee) => (
+                <li key={fee._id}>
+                  ₹{fee.amount ?? 0} — {fee.status}
+                </li>
               ))}
             </ul>
           ) : (
             <p>No fee records available.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-2">
+        <div className="card card-panel">
+          <h3>Latest notices</h3>
+          {notices?.length ? (
+            <ul className="list-muted">
+              {notices.map((n) => (
+                <li key={n._id}>
+                  <strong>{n.title}</strong>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No notices right now.</p>
+          )}
+        </div>
+
+        <div className="card card-panel">
+          <h3>Recent results</h3>
+          {results?.length ? (
+            <div className="results-grid">
+              {results.map((r) => (
+                <div key={r._id} className="result-row">
+                  <div className="result-subject">{r.subjectId?.subjectName || 'Subject'}</div>
+                  <div className="result-marks">{r.marks} marks</div>
+                  <div className="result-grade">{r.grade}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p>No results available yet.</p>
           )}
         </div>
       </div>
@@ -101,3 +137,4 @@ const StudentDashboard = () => {
 };
 
 export default StudentDashboard;
+

@@ -21,7 +21,7 @@ const Login = () => {
       navigate('/verify-otp');
     } catch (err) {
       setError(err?.response?.data?.message || 'Unable to send OTP.');
-      alert(err?.response?.data?.message || 'Registration failed.');
+      alert(err);
       console.error('Login error:', err);
     } finally {
       setLoading(false);

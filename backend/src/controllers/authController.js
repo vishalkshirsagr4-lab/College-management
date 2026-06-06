@@ -121,7 +121,9 @@ const verifyRegister = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const email = req.body.email?.toString().trim().toLowerCase();
+    const password = req.body.password?.toString().trim();
+
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
     }

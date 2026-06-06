@@ -6,3 +6,5 @@ export const getResults = () => api.get('/results');
 export const getNotices = () => api.get('/notices');
 export const getFees = () => api.get('/fees');
 export const getAssignments = () => api.get('/assignments');
+export const getStudentDashboard = () => api.get('/students/me/dashboard');
+

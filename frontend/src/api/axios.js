@@ -1,7 +1,7 @@
 import axios from 'axios';
-
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -33,7 +33,9 @@ api.interceptors.response.use(
     try {
       // refresh token uses httpOnly cookie on backend
       const refreshResponse = await api.post('/auth/refresh');
+
       const newToken = refreshResponse?.data?.token;
+
       if (newToken) {
         localStorage.setItem('token', newToken);
         api.defaults.headers.Authorization = `Bearer ${newToken}`;

@@ -6,22 +6,29 @@ const User = require('../models/user');
 
 async function seedAdmin() {
   try {
-    const password = process.env.SEED_ADMIN_PASSWORD || 'admin123';
-    const email = process.env.SEED_ADMIN_EMAIL || 'vishalkshirsagr4@gmail.com';
+    const password = process.env.SEED_ADMIN_PASSWORD;
+    const email = process.env.SEED_ADMIN_EMAIL;
     const name = process.env.SEED_ADMIN_NAME || 'Admin';
 
-    const existingAdmin = await User.findOne({ role: 'admin' });
+    const existingAdmin = await User.findOne({ email, role: 'admin' });
     if (existingAdmin) {
       console.log('Admin already exists:', existingAdmin.email);
+
+      const passwordMatches = await bcrypt.compare(password, existingAdmin.password);
+      if (!passwordMatches) {
+        existingAdmin.password = password;
+        existingAdmin.isVerified = true;
+        await existingAdmin.save();
+        console.log('Admin password updated from SEED_ADMIN_PASSWORD.');
+      }
+
       return;
     }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
 
     const admin = await User.create({
       name,
       email,
-      password: hashedPassword,
+      password,
       role: 'admin',
       isVerified: true,
       profileImage: {
