@@ -13,10 +13,13 @@ const teacherRoutes = require('./src/routes/teachers');
 const studentRoutes = require('./src/routes/students');
 const subjectRoutes = require('./src/routes/subjects');
 const attendanceRoutes = require('./src/routes/attendance');
+const timetableRoutes = require('./src/routes/timetable');
 const assignmentRoutes = require('./src/routes/assignments');
 const examRoutes = require('./src/routes/exams');
 const resultRoutes = require('./src/routes/results');
 const noticeRoutes = require('./src/routes/notices');
+const holidayRoutes = require('./src/routes/holidays');
+const leavesRoutes = require('./src/routes/leaves');
 const feeRoutes = require('./src/routes/fees');
 const studentDashboardRoutes = require('./src/routes/studentDashboard');
 
@@ -57,10 +60,13 @@ app.use('/api/teacher', teacherRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/timetable', timetableRoutes);
 app.use('/api/assignments', assignmentRoutes);
 app.use('/api/exams', examRoutes);
 app.use('/api/results', resultRoutes);
 app.use('/api/notices', noticeRoutes);
+app.use('/api/holidays', holidayRoutes);
+app.use('/api/leaves', leavesRoutes);
 app.use('/api', studentDashboardRoutes);
 app.use('/api/fees', feeRoutes);
 

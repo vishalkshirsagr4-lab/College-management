@@ -12,10 +12,10 @@ const {
 
 const router = express.Router();
 
-router.post('/', authMiddleware, authorizeRoles('admin'), upload.single('attachment'), createNotice);
+router.post('/', authMiddleware, authorizeRoles('admin', 'teacher'), upload.single('attachment'), createNotice);
 router.get('/', authMiddleware, getNotices);
 router.get('/:id', authMiddleware, getNoticeById);
-router.put('/:id', authMiddleware, authorizeRoles('admin'), upload.single('attachment'), updateNotice);
+router.put('/:id', authMiddleware, authorizeRoles('admin', 'teacher'), upload.single('attachment'), updateNotice);
 router.delete('/:id', authMiddleware, authorizeRoles('admin'), deleteNotice);
 
 module.exports = router;

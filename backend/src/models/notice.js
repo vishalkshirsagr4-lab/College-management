@@ -19,6 +19,13 @@ const noticeSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    subjectId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Subject',
+    },
+    targetSemester: {
+      type: Number,
+    },
   },
   { timestamps: true }
 );

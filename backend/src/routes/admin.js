@@ -5,6 +5,8 @@ const {
   createTeacher,
   createSubject,
   assignTeacherToSubject,
+  convertUserToTeacher,
+  searchUsers,
   getAllStudents,
   getAllTeachers,
   getAllSubjects,
@@ -16,6 +18,8 @@ const router = express.Router();
 router.use(authMiddleware, adminOnly);
 
 router.post('/create-teacher', createTeacher);
+router.post('/convert-to-teacher', convertUserToTeacher);
+router.get('/users/search', searchUsers);
 router.post('/create-subject', createSubject);
 router.put('/assign-teacher', assignTeacherToSubject);
 router.get('/students', getAllStudents);

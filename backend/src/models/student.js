@@ -29,6 +29,12 @@ const studentSchema = new mongoose.Schema(
       url: String,
       key: String,
     },
+    subjects: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Subject',
+      },
+    ],
   },
   { timestamps: true }
 );

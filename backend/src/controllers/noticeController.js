@@ -9,6 +9,12 @@ const createNotice = async (req, res, next) => {
     }
 
     const notice = new Notice({ title, description, createdBy: req.user.id });
+    if (req.body.subjectId) {
+      notice.subjectId = req.body.subjectId;
+    }
+    if (req.body.targetSemester) {
+      notice.targetSemester = parseInt(req.body.targetSemester, 10);
+    }
     if (req.file) {
       const uploadResult = await uploadToS3(req.file.buffer, 'college-management/notices', req.file.originalname);
       notice.attachment = {
@@ -26,7 +32,7 @@ const createNotice = async (req, res, next) => {
 
 const getNotices = async (req, res, next) => {
   try {
-    const notices = await Notice.find().populate('createdBy', 'name email role');
+    const notices = await Notice.find().populate('createdBy', 'name email role').populate({ path: 'subjectId', select: 'subjectName subjectCode', populate: { path: 'teacherId', populate: { path: 'userId', select: 'name email' } } });
     res.status(200).json({ notices });
   } catch (error) {
     next(error);
@@ -35,7 +41,7 @@ const getNotices = async (req, res, next) => {
 
 const getNoticeById = async (req, res, next) => {
   try {
-    const notice = await Notice.findById(req.params.id).populate('createdBy', 'name email role');
+    const notice = await Notice.findById(req.params.id).populate('createdBy', 'name email role').populate({ path: 'subjectId', select: 'subjectName subjectCode', populate: { path: 'teacherId', populate: { path: 'userId', select: 'name email' } } });
     if (!notice) {
       return res.status(404).json({ message: 'Notice not found' });
     }
@@ -51,9 +57,14 @@ const updateNotice = async (req, res, next) => {
     if (!notice) {
       return res.status(404).json({ message: 'Notice not found' });
     }
+    // Teachers may only update notices they created. Admins can update any.
+    if (req.user.role === 'teacher' && notice.createdBy.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Permission denied: cannot edit this notice' });
+    }
 
     notice.title = req.body.title || notice.title;
     notice.description = req.body.description || notice.description;
+    notice.targetSemester = req.body.targetSemester ? parseInt(req.body.targetSemester, 10) : notice.targetSemester;
 
     if (req.file) {
       if (notice.attachment?.key) {

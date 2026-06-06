@@ -43,7 +43,7 @@ const createStudentProfile = async (req, res, next) => {
 
 const getAllStudents = async (req, res, next) => {
   try {
-    const students = await Student.find().populate('userId', 'name email role profileImage');
+    const students = await Student.find().populate('userId', 'name email role profileImage').populate({ path: 'subjects', populate: { path: 'teacherId', populate: { path: 'userId', select: 'name email' } } });
     res.status(200).json({ students });
   } catch (error) {
     next(error);
@@ -52,7 +52,7 @@ const getAllStudents = async (req, res, next) => {
 
 const getMyStudentProfile = async (req, res, next) => {
   try {
-    const student = await Student.findOne({ userId: req.user.id }).populate('userId', 'name email role profileImage');
+    const student = await Student.findOne({ userId: req.user.id }).populate('userId', 'name email role profileImage').populate({ path: 'subjects', populate: { path: 'teacherId', populate: { path: 'userId', select: 'name email' } } });
     if (!student) {
       return res.status(200).json({ student: null });
     }
@@ -64,7 +64,7 @@ const getMyStudentProfile = async (req, res, next) => {
 
 const getStudentById = async (req, res, next) => {
   try {
-    const student = await Student.findById(req.params.id).populate('userId', 'name email role profileImage');
+    const student = await Student.findById(req.params.id).populate('userId', 'name email role profileImage').populate({ path: 'subjects', populate: { path: 'teacherId', populate: { path: 'userId', select: 'name email' } } });
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
     }
@@ -103,6 +103,31 @@ const updateStudentProfile = async (req, res, next) => {
 
     await student.save();
     res.status(200).json({ message: 'Student profile updated', student });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateStudentSubjects = async (req, res, next) => {
+  try {
+    const { subjects } = req.body; // expected array of subject IDs
+    const student = await Student.findById(req.params.id);
+    if (!student) {
+      return res.status(404).json({ message: 'Student profile not found' });
+    }
+
+    if (req.user.role === 'student' && student.userId.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    if (!Array.isArray(subjects)) {
+      return res.status(400).json({ message: 'subjects must be an array of subject IDs' });
+    }
+
+    student.subjects = subjects;
+    await student.save();
+    const populated = await Student.findById(student._id).populate({ path: 'subjects', populate: { path: 'teacherId', populate: { path: 'userId', select: 'name email' } } }).populate('userId', 'name email');
+    res.status(200).json({ message: 'Student subjects updated', student: populated });
   } catch (error) {
     next(error);
   }

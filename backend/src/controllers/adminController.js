@@ -162,6 +162,48 @@ const blockUser = async (req, res, next) => {
   }
 };
 
+const searchUsers = async (req, res, next) => {
+  try {
+    const q = (req.query.q || '').trim();
+    const query = {};
+    if (q) {
+      const re = new RegExp(q, 'i');
+      query.$or = [{ name: re }, { email: re }];
+    }
+    const users = await User.find(query).select('name email role isVerified isBlocked');
+    res.status(200).json({ users });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const convertUserToTeacher = async (req, res, next) => {
+  try {
+    const { userId, department } = req.body;
+    if (!userId) {
+      return res.status(400).json({ message: 'userId is required' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.role === 'teacher') {
+      return res.status(400).json({ message: 'User is already a teacher' });
+    }
+
+    user.role = 'teacher';
+    await user.save();
+
+    const teacher = await Teacher.create({ userId: user._id, department: department || 'Computer Science' });
+
+    res.status(200).json({ message: 'User converted to teacher', teacher });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createTeacher,
   createSubject,
@@ -170,4 +212,6 @@ module.exports = {
   getAllTeachers,
   getAllSubjects,
   blockUser,
+  searchUsers,
+  convertUserToTeacher,
 };

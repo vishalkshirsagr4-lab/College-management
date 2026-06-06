@@ -1,10 +1,9 @@
 import axios from 'axios';
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+import { toast } from 'react-toastify';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
   withCredentials: true,
 });
 
@@ -13,41 +12,32 @@ api.interceptors.request.use((config) => {
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  if (config.data instanceof FormData && config.headers) {
+    delete config.headers['Content-Type'];
+  }
+
   return config;
 });
 
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const originalRequest = error?.config;
-    if (!originalRequest || originalRequest._retry) {
-      return Promise.reject(error);
-    }
-
+  (error) => {
     const status = error?.response?.status;
-    if (status !== 401) {
-      return Promise.reject(error);
-    }
+    const message = error?.response?.data?.message || error?.message || 'Network error';
 
-    originalRequest._retry = true;
-    try {
-      // refresh token uses httpOnly cookie on backend
-      const refreshResponse = await api.post('/auth/refresh');
-
-      const newToken = refreshResponse?.data?.token;
-
-      if (newToken) {
-        localStorage.setItem('token', newToken);
-        api.defaults.headers.Authorization = `Bearer ${newToken}`;
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        return api(originalRequest);
-      }
-      return Promise.reject(error);
-    } catch (refreshErr) {
+    if (status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      return Promise.reject(refreshErr);
+      toast.error('Session expired. Please sign in again.');
+      window.location.href = '/login';
+    } else if (status === 403) {
+      toast.error('You are not authorized to perform this action.');
+    } else if (status >= 500) {
+      toast.error('Server error. Please try again later.');
     }
+
+    return Promise.reject(error);
   }
 );
 

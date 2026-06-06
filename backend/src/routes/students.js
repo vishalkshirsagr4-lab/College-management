@@ -8,6 +8,7 @@ const {
   getMyStudentProfile,
   getStudentById,
   updateStudentProfile,
+  updateStudentSubjects,
   deleteStudentProfile,
 } = require('../controllers/studentController');
 
@@ -18,6 +19,7 @@ router.get('/', authMiddleware, authorizeRoles('admin'), getAllStudents);
 router.get('/me', authMiddleware, authorizeRoles('student', 'admin'), getMyStudentProfile);
 router.get('/:id', authMiddleware, authorizeRoles('admin'), getStudentById);
 router.put('/:id', authMiddleware, authorizeRoles('admin', 'student'), upload.single('photo'), updateStudentProfile);
+router.put('/:id/subjects', authMiddleware, authorizeRoles('admin', 'student'), updateStudentSubjects);
 router.delete('/:id', authMiddleware, authorizeRoles('admin'), deleteStudentProfile);
 
 module.exports = router;

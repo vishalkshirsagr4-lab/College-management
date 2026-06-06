@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { assignTeacher, getSubjects, getTeachers } from '../../api/admin.api';
+import { searchUsers, convertUserToTeacher } from '../../api/admin.api';
 
 const AssignTeacher = () => {
   const [teachers, setTeachers] = useState([]);
@@ -8,6 +9,9 @@ const AssignTeacher = () => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [userQuery, setUserQuery] = useState('');
+  const [userResults, setUserResults] = useState([]);
+  const [converting, setConverting] = useState(false);
 
   useEffect(() => {
     const fetchLists = async () => {
@@ -22,6 +26,30 @@ const AssignTeacher = () => {
     };
     fetchLists();
   }, []);
+
+  const handleUserSearch = async () => {
+    try {
+      const res = await searchUsers(userQuery);
+      setUserResults(res.data.users || []);
+    } catch (err) {
+      setUserResults([]);
+    }
+  };
+
+  const handleConvert = async (userId) => {
+    setConverting(true);
+    try {
+      await convertUserToTeacher({ userId });
+      // refresh teacher list
+      const teacherRes = await getTeachers();
+      setTeachers(teacherRes.data.teachers || []);
+      setUserResults((prev) => prev.filter((u) => u._id !== userId));
+    } catch (err) {
+      // ignore for now
+    } finally {
+      setConverting(false);
+    }
+  };
 
   const handleChange = (key) => (event) => {
     setForm({ ...form, [key]: event.target.value });
@@ -51,6 +79,25 @@ const AssignTeacher = () => {
         </div>
       </div>
       <div className="card card-panel">
+        <div className="section-card">
+          <h3>Find existing users</h3>
+          <div className="form-row">
+            <input placeholder="Search by name or email" value={userQuery} onChange={(e) => setUserQuery(e.target.value)} />
+            <button type="button" className="button" onClick={handleUserSearch}>Search</button>
+          </div>
+          <div>
+            {userResults.map((u) => (
+              <div key={u._id} className="list-item">
+                <div>{u.name} — {u.email} ({u.role || 'user'})</div>
+                {u.role !== 'teacher' && (
+                  <button className="button button-secondary" onClick={() => handleConvert(u._id)} disabled={converting}>
+                    {converting ? 'Converting...' : 'Make Teacher'}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
         <form className="form-grid" onSubmit={handleSubmit}>
           <label>Teacher</label>
           <select value={form.teacherId} onChange={handleChange('teacherId')} required>
