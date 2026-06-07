@@ -1,6 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { getAttendance, getAssignments, getExams, getStudentDashboard } from '../../api/student.api';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from 'recharts';
+
+import {
+  getStudentDashboard,
+  getMyTeachers,
+  getMySubjects,
+  getMyAssignments,
+  getMyMaterials,
+  getMyAttendance,
+  getMyNotices,
+  getMyExams,
+  getMyResults,
+} from '../../api/student.api';
+
 import LoadingSkeleton from '../../components/ui/LoadingSkeleton';
 import StatCard from '../../components/ui/StatCard';
 
@@ -9,6 +29,7 @@ const StudentDashboard = () => {
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [exams, setExams] = useState([]);
+  const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -17,25 +38,49 @@ const StudentDashboard = () => {
       try {
         const dashboardRes = await getStudentDashboard();
         const dashboardData = dashboardRes.data.dashboard;
+
         if (!dashboardData) {
           setError('Student dashboard not available.');
           return;
         }
 
-        setDashboard(dashboardData);
-        const studentId = dashboardData.student?._id;
-
-        const [attendanceRes, assignmentsRes, examsRes] = await Promise.all([
-          getAttendance(studentId),
-          getAssignments(),
-          getExams(),
+        const [
+          teachersRes,
+          subjectsRes,
+          assignmentsRes,
+          materialsRes,
+          attendanceRes,
+          noticesRes,
+          examsRes,
+          resultsRes,
+        ] = await Promise.all([
+          getMyTeachers(),
+          getMySubjects(),
+          getMyAssignments(),
+          getMyMaterials(),
+          getMyAttendance(),
+          getMyNotices(),
+          getMyExams(),
+          getMyResults(),
         ]);
 
-        setAttendanceRecords(attendanceRes.data.attendance || []);
+        setDashboard({
+          ...dashboardData,
+          teachers: teachersRes.data.teachers || [],
+          subjects: subjectsRes.data.subjects || [],
+          materials: materialsRes.data.materials || [],
+          notices: noticesRes.data.notices || [],
+          results: resultsRes.data.results || [],
+        });
+
         setAssignments(assignmentsRes.data.assignments || []);
         setExams(examsRes.data.exams || []);
+
+        const flatHistory = (attendanceRes.data.attendance || []).flatMap(
+          (s) => s.history || []
+        );
+        setAttendanceRecords(flatHistory);
       } catch (err) {
-        console.error(err);
         setError('Unable to load dashboard data.');
       } finally {
         setLoading(false);
@@ -47,141 +92,185 @@ const StudentDashboard = () => {
 
   const attendanceSummary = useMemo(() => {
     const total = attendanceRecords.length;
-    const present = attendanceRecords.filter((item) => item.status === 'Present').length;
-    const absent = total - present;
+    const present = attendanceRecords.filter((i) => i.status === 'Present').length;
     return {
       total,
       present,
-      absent,
+      absent: total - present,
       rate: total ? Math.round((present / total) * 100) : 0,
     };
   }, [attendanceRecords]);
 
   const chartData = useMemo(() => {
-    const monthMap = {};
+    const map = {};
     attendanceRecords.forEach((item) => {
-      const month = new Date(item.date).toLocaleString('default', { month: 'short' });
-      if (!monthMap[month]) monthMap[month] = { month, Present: 0, Absent: 0 };
-      monthMap[month][item.status] += 1;
+      const month = new Date(item.date).toLocaleString('default', {
+        month: 'short',
+      });
+
+      if (!map[month]) map[month] = { month, Present: 0, Absent: 0 };
+      map[month][item.status] += 1;
     });
-    return Object.values(monthMap).slice(0, 6);
+
+    return Object.values(map).slice(0, 6);
   }, [attendanceRecords]);
 
-  const pendingAssignments = assignments.filter((assignment) => new Date(assignment.dueDate) >= new Date());
-  const upcomingExams = exams.filter((exam) => new Date(exam.date) >= new Date());
+  const assignmentsDue = assignments.filter(
+    (a) => new Date(a.dueDate) >= new Date()
+  );
+
+  const upcomingExams = exams.filter(
+    (e) => new Date(e.date) >= new Date()
+  );
+
   const events = [
-    ...pendingAssignments.slice(0, 2).map((assignment) => ({
-      id: assignment._id,
-      title: assignment.title,
-      subtitle: `Assignment due ${new Date(assignment.dueDate).toLocaleDateString()}`,
-      when: assignment.dueDate,
+    ...assignmentsDue.slice(0, 2).map((a) => ({
+      id: a._id,
+      title: a.title,
+      subtitle: `Due ${new Date(a.dueDate).toLocaleDateString()}`,
+      when: a.dueDate,
       type: 'assignment',
     })),
-    ...upcomingExams.slice(0, 3).map((exam) => ({
-      id: exam._id,
-      title: exam.examName || 'Exam',
-      subtitle: `Exam scheduled ${new Date(exam.date).toLocaleDateString()}`,
-      when: exam.date,
+    ...upcomingExams.slice(0, 3).map((e) => ({
+      id: e._id,
+      title: e.examName || 'Exam',
+      subtitle: `Scheduled ${new Date(e.date).toLocaleDateString()}`,
+      when: e.date,
       type: 'exam',
     })),
   ].sort((a, b) => new Date(a.when) - new Date(b.when));
 
-  if (loading) {
-    return <LoadingSkeleton rows={3} columns={1} />;
-  }
+  if (loading) return <LoadingSkeleton rows={4} columns={1} />;
 
-  if (error) {
-    return <div className="section-card">{error}</div>;
-  }
+  if (error)
+    return (
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
+        {error}
+      </div>
+    );
 
-  const { student, notices, feesSummary = {} } = dashboard;
+  const { student = {} } = dashboard || {};
 
   return (
-    <div>
-      <div className="section-card">
-        <div>
-          <h1 className="page-title">Welcome back, {student.userId?.name || 'Student'} 👋</h1>
-          <p className="page-description">A clean snapshot of your attendance, assignments, exams, and campus notices.</p>
-        </div>
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
+
+      {/* Header */}
+      <section className="rounded-3xl bg-white border border-gray-100 p-6 sm:p-8">
+        <p className="text-xs tracking-widest text-blue-600 uppercase">
+          Student Dashboard
+        </p>
+
+        <h1 className="mt-2 text-2xl sm:text-4xl font-bold text-gray-900">
+          Welcome back, {student?.userId?.name || 'Student'}
+        </h1>
+
+        <p className="mt-2 text-gray-500 text-sm sm:text-base">
+          Track attendance, assignments, exams and campus updates in one place.
+        </p>
+      </section>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <StatCard
+          icon="📊"
+          label="Attendance"
+          value={`${attendanceSummary.rate}%`}
+          detail={`${attendanceSummary.present}/${attendanceSummary.total}`}
+          accent="blue"
+        />
+        <StatCard
+          icon="📝"
+          label="Assignments"
+          value={assignmentsDue.length}
+          detail="Pending"
+          accent="amber"
+        />
+        <StatCard
+          icon="📅"
+          label="Exams"
+          value={upcomingExams.length}
+          detail="Upcoming"
+          accent="green"
+        />
+        <StatCard
+          icon="💰"
+          label="Fees"
+          value="₹0"
+          detail="Demo placeholder"
+          accent="red"
+        />
       </div>
 
-      <div className="panel-grid columns-4">
-        <StatCard icon="📌" label="Attendance" value={`${attendanceSummary.rate}%`} detail={`${attendanceSummary.present} of ${attendanceSummary.total} days present`} />
-        <StatCard icon="📝" label="Pending Assignments" value={pendingAssignments.length} detail="Due assignments still open" />
-        <StatCard icon="📅" label="Upcoming Exams" value={upcomingExams.length} detail="Exams scheduled soon" />
-        <StatCard icon="💰" label="Fee Status" value={`₹${feesSummary.unpaidAmount || 0}`} detail={`Outstanding of ₹${feesSummary.totalAmount || 0}`} />
-      </div>
+      {/* Chart + Notices */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-      <div className="panel-grid columns-2">
-        <section className="section-panel">
-          <div className="section-header">
-            <h2>Attendance trend</h2>
-            <p className="text-muted">Monthly presence vs absence for your current active subjects.</p>
-          </div>
-          <div style={{ height: 320 }}>
+        {/* Chart */}
+        <section className="bg-white rounded-3xl border border-gray-100 p-5">
+          <h2 className="font-semibold text-gray-900">Attendance Trend</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Monthly attendance overview
+          </p>
+
+          <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData.length ? chartData : [{ month: 'Jan', Present: 0, Absent: 0 }] }>
-                <defs>
-                  <linearGradient id="presentGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.6} />
-                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.05} />
-                  </linearGradient>
-                  <linearGradient id="absentGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f97316" stopOpacity={0.6} />
-                    <stop offset="95%" stopColor="#f97316" stopOpacity={0.05} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="4 4" stroke="rgba(15,23,42,0.08)" />
-                <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ borderRadius: 20, border: '1px solid rgba(15,23,42,0.08)' }} />
-                <Area type="monotone" dataKey="Present" stroke="#4f46e5" fill="url(#presentGradient)" strokeWidth={3} />
-                <Area type="monotone" dataKey="Absent" stroke="#f97316" fill="url(#absentGradient)" strokeWidth={3} />
+              <AreaChart data={chartData.length ? chartData : [{ month: 'Jan', Present: 0, Absent: 0 }]}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Area type="monotone" dataKey="Present" stroke="#3b82f6" fill="#93c5fd" />
+                <Area type="monotone" dataKey="Absent" stroke="#f97316" fill="#fed7aa" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </section>
 
-        <section className="section-panel">
-          <div className="section-header">
-            <h2>Recent notices</h2>
-            <p className="text-muted">Important college announcements, sorted newest first.</p>
-          </div>
-          <div className="list-card">
-            {notices.slice(0, 4).map((notice) => (
-              <article key={notice._id} className="notice-card">
-                <div className="notice-meta">
-                  <span className="status-pill green">{new Date(notice.createdAt).toLocaleDateString()}</span>
-                  <span>{notice.createdBy?.name || 'Admin'}</span>
-                </div>
-                <h3>{notice.title}</h3>
-                <p className="text-muted">{notice.description.slice(0, 120)}{notice.description.length > 120 ? '…' : ''}</p>
-              </article>
+        {/* Notices */}
+        <section className="bg-white rounded-3xl border border-gray-100 p-5">
+          <h2 className="font-semibold text-gray-900">Recent Notices</h2>
+
+          <div className="mt-4 space-y-3">
+            {(dashboard?.notices || []).slice(0, 4).map((n) => (
+              <div
+                key={n._id}
+                className="p-4 rounded-2xl bg-gray-50 border border-gray-100"
+              >
+                <p className="font-medium text-gray-900">{n.title}</p>
+                <p className="text-sm text-gray-500 line-clamp-2">
+                  {n.description}
+                </p>
+              </div>
             ))}
+
+            {(!dashboard?.notices || dashboard.notices.length === 0) && (
+              <p className="text-sm text-gray-500">No notices available</p>
+            )}
           </div>
         </section>
       </div>
 
-      <section className="section-panel">
-        <div className="section-header">
-          <h2>Upcoming events</h2>
-          <p className="text-muted">Upcoming assignments and exam dates to keep your semester on track.</p>
-        </div>
-        <div className="list-card">
+      {/* Events */}
+      <section className="bg-white rounded-3xl border border-gray-100 p-5">
+        <h2 className="font-semibold text-gray-900">Upcoming Events</h2>
+
+        <div className="mt-4 space-y-3">
           {events.length === 0 ? (
-            <div className="notice-card">No upcoming events for now.</div>
+            <p className="text-sm text-gray-500">No upcoming events</p>
           ) : (
-            events.map((event) => (
-              <article key={event.id} className="event-card">
-                <div className="event-meta">
-                  <span className={`status-pill ${event.type === 'exam' ? 'amber' : 'green'}`}>
-                    {event.type === 'exam' ? 'Exam' : 'Assignment'}
-                  </span>
-                  <span>{new Date(event.when).toLocaleDateString()}</span>
+            events.map((e) => (
+              <div
+                key={e.id}
+                className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 rounded-2xl bg-gray-50 border border-gray-100"
+              >
+                <div>
+                  <p className="font-medium">{e.title}</p>
+                  <p className="text-sm text-gray-500">{e.subtitle}</p>
                 </div>
-                <h3>{event.title}</h3>
-                <p className="text-muted">{event.subtitle}</p>
-              </article>
+
+                <span className="text-xs text-gray-500 mt-2 sm:mt-0">
+                  {new Date(e.when).toLocaleDateString()}
+                </span>
+              </div>
             ))
           )}
         </div>
@@ -191,4 +280,3 @@ const StudentDashboard = () => {
 };
 
 export default StudentDashboard;
-

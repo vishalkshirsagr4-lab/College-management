@@ -191,11 +191,3 @@ module.exports = {
   deleteAttendance,
   getStudentStats,
 };
-
-module.exports = {
-  createAttendance,
-  getAttendance,
-  getAttendanceByStudent,
-  updateAttendance,
-  deleteAttendance,
-};

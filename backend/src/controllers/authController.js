@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
+const Student = require('../models/student');
 const OTP = require('../models/otp');
 const { sendOTP } = require('../config/email');
 require('dotenv').config();
@@ -33,7 +34,13 @@ const setRefreshTokenCookie = (res, refreshToken) => {
 };
 
 const sendVerificationOTP = async (email, otp) => {
-  await sendOTP(email, otp);
+  try {
+    await sendOTP(email, otp);
+    return { success: true };
+  } catch (error) {
+    console.error('OTP send failed:', error.response?.data || error.message || error);
+    return { success: false, error };
+  }
 };
 
 const register = async (req, res, next) => {
@@ -64,7 +71,13 @@ const register = async (req, res, next) => {
       expiresAt: Date.now() + 15 * 60 * 1000,
     });
 
-    await sendVerificationOTP(email, otp);
+    const otpResult = await sendVerificationOTP(email, otp);
+    if (!otpResult.success) {
+      return res.status(500).json({
+        message: 'Failed to send OTP email for registration',
+        error: otpResult.error?.response?.data?.message || otpResult.error?.message || 'Email provider error',
+      });
+    }
 
     res.status(200).json({ message: 'OTP sent to email for registration' });
   } catch (error) {
@@ -121,8 +134,9 @@ const verifyRegister = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    const email = req.body.email?.toString().trim().toLowerCase();
-    const password = req.body.password?.toString().trim();
+    const body = req.body || {};
+    const email = body.email?.toString().trim().toLowerCase();
+    const password = body.password?.toString().trim();
 
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
@@ -141,8 +155,12 @@ const login = async (req, res, next) => {
       return res.status(403).json({ message: 'Account is blocked' });
     }
 
-    const isMatch = await bcrypt.compare(password.trim(), user.password);
-    console.log("COMPARE RESULT:", isMatch);
+    if (!user.password) {
+      return res.status(500).json({ message: 'User password is not configured correctly' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    console.log('COMPARE RESULT:', isMatch);
 
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
@@ -151,7 +169,14 @@ const login = async (req, res, next) => {
     const otp = generateOTP();
     await OTP.deleteMany({ email, type: 'login' });
     await OTP.create({ email, otp, type: 'login', expiresAt: Date.now() + 15 * 60 * 1000 });
-    await sendVerificationOTP(email, otp);
+
+    const otpResult = await sendVerificationOTP(email, otp);
+    if (!otpResult.success) {
+      return res.status(500).json({
+        message: 'Failed to send OTP email for login',
+        error: otpResult.error?.response?.data?.message || otpResult.error?.message || 'Email provider error',
+      });
+    }
 
     res.status(200).json({ message: 'OTP sent to email for login' });
   } catch (error) {
@@ -182,6 +207,22 @@ const verifyLogin = async (req, res, next) => {
       return res.status(400).json({ message: 'User not found' });
     }
 
+    if (user.role === 'student') {
+      const existingProfile = await Student.findOne({ userId: user._id });
+      if (!existingProfile) {
+        const usn = await generateStudentUsn(user.email);
+        await Student.create({
+          userId: user._id,
+          usn,
+          semester: 1,
+          section: 'A',
+          phone: '',
+          department: 'General',
+          academicYear: '1st Year',
+        });
+      }
+    }
+
     await OTP.deleteMany({ email, type: 'login' });
 
     user.lastLogin = Date.now();
@@ -205,6 +246,19 @@ const verifyLogin = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+const generateStudentUsn = async (email) => {
+  const emailPrefix = String(email || 'student').split('@')[0].replace(/[^A-Za-z0-9]/g, '').toUpperCase() || 'STU';
+  let usn = `${emailPrefix}-${Math.floor(1000 + Math.random() * 9000)}`;
+  let exists = await Student.findOne({ usn });
+  let attempts = 0;
+  while (exists && attempts < 10) {
+    attempts += 1;
+    usn = `${emailPrefix}-${Math.floor(1000 + Math.random() * 9000)}`;
+    exists = await Student.findOne({ usn });
+  }
+  return usn;
 };
 
 const refreshAccessToken = async (req, res, next) => {
@@ -245,7 +299,14 @@ const forgotPassword = async (req, res, next) => {
     const otp = generateOTP();
     await OTP.deleteMany({ email, type: 'reset' });
     await OTP.create({ email, otp, type: 'reset', expiresAt: Date.now() + 15 * 60 * 1000 });
-    await sendVerificationOTP(email, otp);
+
+    const otpResult = await sendVerificationOTP(email, otp);
+    if (!otpResult.success) {
+      return res.status(500).json({
+        message: 'Failed to send OTP email for password reset',
+        error: otpResult.error?.response?.data?.message || otpResult.error?.message || 'Email provider error',
+      });
+    }
 
     res.status(200).json({ message: 'OTP sent to email for password reset' });
   } catch (error) {

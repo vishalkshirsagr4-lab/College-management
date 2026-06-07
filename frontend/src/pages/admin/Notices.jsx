@@ -7,15 +7,21 @@ const Notices = () => {
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState({ title: '', description: '', attachment: null, targetSemester: '' });
   const [submitting, setSubmitting] = useState(false);
+
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    attachment: null,
+    targetSemester: '',
+  });
 
   useEffect(() => {
     const load = async () => {
       try {
-        const response = await getNotices();
-        setNotices(response.data.notices || []);
-      } catch (error) {
+        const res = await getNotices();
+        setNotices(res.data.notices || []);
+      } catch {
         toast.error('Unable to load notices.');
       } finally {
         setLoading(false);
@@ -24,29 +30,29 @@ const Notices = () => {
     load();
   }, []);
 
-  const handleChange = (key) => (event) => {
-    const value = key === 'attachment' ? event.target.files[0] : event.target.value;
-    setForm({ ...form, [key]: value });
+  const handleChange = (key) => (e) => {
+    const value = key === 'attachment' ? e.target.files[0] : e.target.value;
+    setForm((p) => ({ ...p, [key]: value }));
   };
 
-  const handleCreate = async (event) => {
-    event.preventDefault();
+  const handleCreate = async (e) => {
+    e.preventDefault();
     setSubmitting(true);
-    try {
-      const formData = new FormData();
-      formData.append('title', form.title);
-      formData.append('description', form.description);
-      if (form.targetSemester) formData.append('targetSemester', form.targetSemester);
-      if (form.attachment) {
-        formData.append('attachment', form.attachment);
-      }
 
-      const { data } = await createNotice(formData);
-      setNotices((prev) => [data.notice, ...prev]);
-      setForm({ title: '', description: '', attachment: null });
-      toast.success('Notice created successfully.');
-    } catch (error) {
-      toast.error(error?.response?.data?.message || 'Unable to create notice.');
+    try {
+      const fd = new FormData();
+      fd.append('title', form.title);
+      fd.append('description', form.description);
+      if (form.targetSemester) fd.append('targetSemester', form.targetSemester);
+      if (form.attachment) fd.append('attachment', form.attachment);
+
+      const res = await createNotice(fd);
+      setNotices((prev) => [res.data.notice, ...prev]);
+
+      setForm({ title: '', description: '', attachment: null, targetSemester: '' });
+      toast.success('Notice created');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to create notice');
     } finally {
       setSubmitting(false);
     }
@@ -55,98 +61,142 @@ const Notices = () => {
   const handleDelete = async (id) => {
     try {
       await deleteNotice(id);
-      setNotices((prev) => prev.filter((notice) => notice._id !== id));
-      toast.success('Notice deleted.');
+      setNotices((p) => p.filter((n) => n._id !== id));
+      toast.success('Notice deleted');
     } catch {
-      toast.error('Could not delete notice.');
+      toast.error('Delete failed');
     }
   };
 
-  const filtered = notices.filter((notice) => {
-    const query = search.toLowerCase();
+  const filtered = notices.filter((n) => {
+    const q = search.toLowerCase();
     return (
-      notice.title?.toLowerCase().includes(query) ||
-      notice.description?.toLowerCase().includes(query)
+      n.title?.toLowerCase().includes(q) ||
+      n.description?.toLowerCase().includes(q)
     );
   });
 
   return (
-    <div>
-      <div className="section-card section-header">
-        <div>
-          <h1 className="page-title">Notice Board</h1>
-          <p className="page-description">Create announcements and upload attachments for users.</p>
-        </div>
+    <div className="space-y-6">
+
+      {/* Header */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <h1 className="text-2xl font-bold text-slate-900">Notice Board</h1>
+        <p className="text-sm text-slate-500 mt-1">
+          Create announcements and share updates with students and teachers.
+        </p>
       </div>
 
-      <article className="section-panel">
-        <h2>Create new notice</h2>
-        <form className="form-grid" onSubmit={handleCreate}>
-          <label>Title</label>
-          <input value={form.title} onChange={handleChange('title')} required />
-          <label>Description</label>
-          <textarea value={form.description} onChange={handleChange('description')} required />
-          <label>Target semester (optional)</label>
-          <input type="number" min="1" value={form.targetSemester} onChange={handleChange('targetSemester')} placeholder="e.g. 3" />
-          <label>Attachment</label>
-          <input type="file" onChange={handleChange('attachment')} />
-          <button type="submit" className="button button-primary" disabled={submitting}>
-            {submitting ? 'Saving...' : 'Create Notice'}
+      {/* Create Form */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">
+          Create Notice
+        </h2>
+
+        <form onSubmit={handleCreate} className="grid gap-4">
+          <input
+            className="w-full rounded-xl border border-slate-200 p-3 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            placeholder="Notice title"
+            value={form.title}
+            onChange={handleChange('title')}
+            required
+          />
+
+          <textarea
+            className="w-full rounded-xl border border-slate-200 p-3 min-h-[100px] focus:outline-none focus:ring-2 focus:ring-sky-500"
+            placeholder="Description"
+            value={form.description}
+            onChange={handleChange('description')}
+            required
+          />
+
+          <input
+            type="number"
+            min="1"
+            placeholder="Target semester (optional)"
+            className="w-full rounded-xl border border-slate-200 p-3 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            value={form.targetSemester}
+            onChange={handleChange('targetSemester')}
+          />
+
+          <input
+            type="file"
+            className="text-sm"
+            onChange={handleChange('attachment')}
+          />
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="bg-sky-600 hover:bg-sky-700 text-white font-semibold py-3 rounded-xl transition disabled:opacity-60"
+          >
+            {submitting ? 'Creating...' : 'Create Notice'}
           </button>
         </form>
-      </article>
+      </div>
 
-      <article className="section-panel">
+      {/* Search */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
         <input
           type="search"
-          placeholder="Search notices by title or content"
+          placeholder="Search notices..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="form-control"
+          className="w-full rounded-xl border border-slate-200 p-3 focus:ring-2 focus:ring-sky-500 outline-none"
         />
+      </div>
+
+      {/* List */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
         {loading ? (
           <LoadingSkeleton rows={4} columns={1} />
         ) : filtered.length === 0 ? (
-          <div className="notice-card">No notices available.</div>
+          <p className="text-slate-500 text-center py-10">
+            No notices found.
+          </p>
         ) : (
-          <div className="table-responsive">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Description</th>
-                  <th>Date</th>
-                  <th>Attachment</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((notice) => (
-                  <tr key={notice._id}>
-                    <td>{notice.title}</td>
-                    <td>{notice.description}</td>
-                    <td>{new Date(notice.createdAt).toLocaleDateString()}</td>
-                    <td>
-                      {notice.attachment?.url ? (
-                        <a className="button button-secondary" href={notice.attachment.url} target="_blank" rel="noreferrer">
-                          Open
-                        </a>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td>
-                      <button className="button button-secondary" onClick={() => handleDelete(notice._id)}>
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid gap-4">
+            {filtered.map((notice) => (
+              <div
+                key={notice._id}
+                className="border border-slate-200 rounded-2xl p-4 hover:shadow-md transition"
+              >
+                <div className="flex justify-between items-start gap-3">
+                  <div>
+                    <h3 className="font-semibold text-slate-900">
+                      {notice.title}
+                    </h3>
+                    <p className="text-sm text-slate-500 mt-1">
+                      {notice.description}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-2">
+                      {new Date(notice.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => handleDelete(notice._id)}
+                    className="text-sm px-3 py-1 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100"
+                  >
+                    Delete
+                  </button>
+                </div>
+
+                {notice.attachment?.url && (
+                  <a
+                    href={notice.attachment.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-block mt-3 text-sm text-sky-600 hover:underline"
+                  >
+                    Open Attachment →
+                  </a>
+                )}
+              </div>
+            ))}
           </div>
         )}
-      </article>
+      </div>
     </div>
   );
 };

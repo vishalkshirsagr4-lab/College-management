@@ -1,38 +1,44 @@
 import { useEffect, useState } from 'react';
-import { assignTeacher, getSubjects, getTeachers } from '../../api/admin.api';
-import { searchUsers, convertUserToTeacher } from '../../api/admin.api';
+import {
+  assignTeacher,
+  getSubjects,
+  getTeachers,
+  searchUsers,
+  convertUserToTeacher,
+} from '../../api/admin.api';
+import { toast } from 'react-toastify';
 
 const AssignTeacher = () => {
   const [teachers, setTeachers] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [form, setForm] = useState({ teacherId: '', subjectId: '' });
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+
   const [userQuery, setUserQuery] = useState('');
   const [userResults, setUserResults] = useState([]);
+
+  const [loading, setLoading] = useState(false);
   const [converting, setConverting] = useState(false);
+  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
-    const fetchLists = async () => {
+    const load = async () => {
       try {
-        const [teacherRes, subjectRes] = await Promise.all([getTeachers(), getSubjects()]);
-        setTeachers(teacherRes.data.teachers || []);
-        setSubjects(subjectRes.data.subjects || []);
-      } catch (err) {
-        setTeachers([]);
-        setSubjects([]);
+        const [t, s] = await Promise.all([getTeachers(), getSubjects()]);
+        setTeachers(t.data.teachers || []);
+        setSubjects(s.data.subjects || []);
+      } catch {
+        toast.error('Failed to load data');
       }
     };
-    fetchLists();
+    load();
   }, []);
 
-  const handleUserSearch = async () => {
+  const handleSearch = async () => {
     try {
       const res = await searchUsers(userQuery);
       setUserResults(res.data.users || []);
-    } catch (err) {
-      setUserResults([]);
+    } catch {
+      toast.error('Search failed');
     }
   };
 
@@ -40,90 +46,138 @@ const AssignTeacher = () => {
     setConverting(true);
     try {
       await convertUserToTeacher({ userId });
-      // refresh teacher list
-      const teacherRes = await getTeachers();
-      setTeachers(teacherRes.data.teachers || []);
+      const res = await getTeachers();
+      setTeachers(res.data.teachers || []);
       setUserResults((prev) => prev.filter((u) => u._id !== userId));
-    } catch (err) {
-      // ignore for now
+      toast.success('User converted to teacher');
+    } catch {
+      toast.error('Conversion failed');
     } finally {
       setConverting(false);
     }
   };
 
-  const handleChange = (key) => (event) => {
-    setForm({ ...form, [key]: event.target.value });
-  };
+  const handleAssign = async (e) => {
+    e.preventDefault();
+    setAssigning(true);
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setError('');
-    setMessage('');
-    setLoading(true);
     try {
       await assignTeacher(form);
-      setMessage('Teacher assigned successfully.');
+      toast.success('Teacher assigned successfully');
+      setForm({ teacherId: '', subjectId: '' });
     } catch (err) {
-      setError(err?.response?.data?.message || 'Unable to assign teacher.');
+      toast.error(err?.response?.data?.message || 'Assignment failed');
     } finally {
-      setLoading(false);
+      setAssigning(false);
     }
   };
 
+  const handleChange = (key) => (e) => {
+    setForm({ ...form, [key]: e.target.value });
+  };
+
   return (
-    <div>
-      <div className="page-header">
-        <div>
-          <h2>Assign Teacher</h2>
-          <p className="text-muted">Link teachers to subjects and build your semester schedule.</p>
+    <div className="space-y-6">
+
+      {/* HEADER */}
+      <div className="bg-white border rounded-2xl p-6 shadow-sm">
+        <h1 className="text-2xl font-bold text-gray-900">Assign Teacher</h1>
+        <p className="text-gray-500 mt-1">
+          Link teachers with subjects and manage academic structure.
+        </p>
+      </div>
+
+      {/* SEARCH USERS */}
+      <div className="bg-white border rounded-2xl p-6 shadow-sm space-y-4">
+        <h2 className="text-lg font-semibold">Find Users</h2>
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input
+            className="flex-1 border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+            placeholder="Search by name or email"
+            value={userQuery}
+            onChange={(e) => setUserQuery(e.target.value)}
+          />
+
+          <button
+            onClick={handleSearch}
+            className="bg-gray-900 text-white px-5 py-2 rounded-xl hover:bg-black"
+          >
+            Search
+          </button>
+        </div>
+
+        {/* SEARCH RESULTS */}
+        <div className="space-y-2">
+          {userResults.map((u) => (
+            <div
+              key={u._id}
+              className="flex flex-col sm:flex-row sm:items-center justify-between border rounded-xl p-3"
+            >
+              <div>
+                <p className="font-medium">{u.name}</p>
+                <p className="text-sm text-gray-500">{u.email}</p>
+              </div>
+
+              {u.role !== 'teacher' && (
+                <button
+                  onClick={() => handleConvert(u._id)}
+                  disabled={converting}
+                  className="mt-2 sm:mt-0 bg-blue-100 text-blue-700 px-4 py-1 rounded-lg hover:bg-blue-200"
+                >
+                  {converting ? 'Converting...' : 'Make Teacher'}
+                </button>
+              )}
+            </div>
+          ))}
         </div>
       </div>
-      <div className="card card-panel">
-        <div className="section-card">
-          <h3>Find existing users</h3>
-          <div className="form-row">
-            <input placeholder="Search by name or email" value={userQuery} onChange={(e) => setUserQuery(e.target.value)} />
-            <button type="button" className="button" onClick={handleUserSearch}>Search</button>
-          </div>
-          <div>
-            {userResults.map((u) => (
-              <div key={u._id} className="list-item">
-                <div>{u.name} — {u.email} ({u.role || 'user'})</div>
-                {u.role !== 'teacher' && (
-                  <button className="button button-secondary" onClick={() => handleConvert(u._id)} disabled={converting}>
-                    {converting ? 'Converting...' : 'Make Teacher'}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-        <form className="form-grid" onSubmit={handleSubmit}>
-          <label>Teacher</label>
-          <select value={form.teacherId} onChange={handleChange('teacherId')} required>
-            <option value="">Select teacher</option>
-            {teachers.map((teacher) => (
-              <option key={teacher._id} value={teacher._id}>
-                {teacher.userId?.name || teacher._id}
+
+      {/* ASSIGN FORM */}
+      <div className="bg-white border rounded-2xl p-6 shadow-sm">
+        <h2 className="text-lg font-semibold mb-4">Assign Teacher to Subject</h2>
+
+        <form onSubmit={handleAssign} className="grid md:grid-cols-2 gap-4">
+
+          <select
+            className="border rounded-xl px-4 py-2"
+            value={form.teacherId}
+            onChange={handleChange('teacherId')}
+            required
+          >
+            <option value="">Select Teacher</option>
+            {teachers.map((t) => (
+              <option key={t._id} value={t._id}>
+                {t.userId?.name}
               </option>
             ))}
           </select>
-          <label>Subject</label>
-          <select value={form.subjectId} onChange={handleChange('subjectId')} required>
-            <option value="">Select subject</option>
-            {subjects.map((subject) => (
-              <option key={subject._id} value={subject._id}>
-                {subject.subjectName} ({subject.subjectCode})
+
+          <select
+            className="border rounded-xl px-4 py-2"
+            value={form.subjectId}
+            onChange={handleChange('subjectId')}
+            required
+          >
+            <option value="">Select Subject</option>
+            {subjects.map((s) => (
+              <option key={s._id} value={s._id}>
+                {s.subjectName} ({s.subjectCode})
               </option>
             ))}
           </select>
-          {error && <div className="alert-error">{error}</div>}
-          {message && <div className="alert-success">{message}</div>}
-          <button type="submit" className="button button-primary" disabled={loading}>
-            {loading ? 'Assigning...' : 'Assign Teacher'}
+
+          <button
+            type="submit"
+            disabled={assigning}
+            className="md:col-span-2 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-xl"
+          >
+            {assigning ? 'Assigning...' : 'Assign Teacher'}
           </button>
+
         </form>
       </div>
+
     </div>
   );
 };

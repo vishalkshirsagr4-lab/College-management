@@ -9,13 +9,22 @@ const Assignments = () => {
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState({ title: '', description: '', subjectId: '', dueDate: '', file: null });
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    subjectId: '',
+    dueDate: '',
+    file: null,
+  });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [assignmentsRes, subjectsRes] = await Promise.all([getAssignments(), getSubjects()]);
+        const [assignmentsRes, subjectsRes] = await Promise.all([
+          getAssignments(),
+          getSubjects(),
+        ]);
         setAssignments(assignmentsRes.data.assignments || []);
         setSubjects(subjectsRes.data.subjects || []);
       } catch (error) {
@@ -27,30 +36,37 @@ const Assignments = () => {
     load();
   }, []);
 
-  const handleChange = (key) => (event) => {
-    const value = key === 'file' ? event.target.files[0] : event.target.value;
+  const handleChange = (key) => (e) => {
+    const value = key === 'file' ? e.target.files[0] : e.target.value;
     setForm({ ...form, [key]: value });
   };
 
-  const handleCreate = async (event) => {
-    event.preventDefault();
+  const handleCreate = async (e) => {
+    e.preventDefault();
     setSubmitting(true);
+
     try {
       const formData = new FormData();
       formData.append('title', form.title);
       formData.append('description', form.description);
       formData.append('subjectId', form.subjectId);
       formData.append('dueDate', form.dueDate);
-      if (form.file) {
-        formData.append('file', form.file);
-      }
+      if (form.file) formData.append('file', form.file);
 
       const { data } = await createAssignment(formData);
       setAssignments((prev) => [data.assignment, ...prev]);
-      setForm({ title: '', description: '', subjectId: '', dueDate: '', file: null });
-      toast.success('Assignment created successfully.');
-    } catch (error) {
-      toast.error(error?.response?.data?.message || 'Unable to create assignment.');
+
+      setForm({
+        title: '',
+        description: '',
+        subjectId: '',
+        dueDate: '',
+        file: null,
+      });
+
+      toast.success('Assignment created successfully');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to create assignment');
     } finally {
       setSubmitting(false);
     }
@@ -59,106 +75,168 @@ const Assignments = () => {
   const handleDelete = async (id) => {
     try {
       await deleteAssignment(id);
-      setAssignments((prev) => prev.filter((assignment) => assignment._id !== id));
-      toast.success('Assignment removed.');
+      setAssignments((prev) => prev.filter((a) => a._id !== id));
+      toast.success('Assignment deleted');
     } catch {
-      toast.error('Could not delete assignment.');
+      toast.error('Delete failed');
     }
   };
 
   const filtered = assignments.filter((item) => {
-    const query = search.toLowerCase();
+    const q = search.toLowerCase();
     return (
-      item.title?.toLowerCase().includes(query) ||
-      item.subject?.toLowerCase().includes(query) ||
-      item.description?.toLowerCase().includes(query)
+      item.title?.toLowerCase().includes(q) ||
+      item.subject?.toLowerCase().includes(q) ||
+      item.description?.toLowerCase().includes(q)
     );
   });
 
   return (
-    <div>
-      <div className="section-card section-header">
-        <div>
-          <h1 className="page-title">Assignment Management</h1>
-          <p className="page-description">Create, manage, and upload assignment files to the backend.</p>
-        </div>
+    <div className="space-y-6">
+
+      {/* HEADER */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+        <h1 className="text-2xl font-bold text-gray-900">Assignment Management</h1>
+        <p className="text-gray-500 mt-1">
+          Create and manage assignments easily with file uploads.
+        </p>
       </div>
 
-      <article className="section-panel">
-        <h2>Create new assignment</h2>
-        <form className="form-grid" onSubmit={handleCreate}>
-          <label>Title</label>
-          <input value={form.title} onChange={handleChange('title')} required />
-          <label>Description</label>
-          <textarea value={form.description} onChange={handleChange('description')} />
-          <label>Subject</label>
-          <select value={form.subjectId} onChange={handleChange('subjectId')} required>
-            <option value="">Select subject</option>
-            {subjects.map((subject) => (
-              <option key={subject._id} value={subject._id}>
-                {subject.subjectName}
+      {/* CREATE FORM */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          Create New Assignment
+        </h2>
+
+        <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          <input
+            className="w-full border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Title"
+            value={form.title}
+            onChange={handleChange('title')}
+            required
+          />
+
+          <select
+            className="w-full border rounded-xl px-4 py-2"
+            value={form.subjectId}
+            onChange={handleChange('subjectId')}
+            required
+          >
+            <option value="">Select Subject</option>
+            {subjects.map((s) => (
+              <option key={s._id} value={s._id}>
+                {s.subjectName}
               </option>
             ))}
           </select>
-          <label>Due Date</label>
-          <input type="date" value={form.dueDate} onChange={handleChange('dueDate')} required />
-          <label>Attachment</label>
-          <input type="file" onChange={handleChange('file')} />
-          <button type="submit" className="button button-primary" disabled={submitting}>
-            {submitting ? 'Saving...' : 'Create Assignment'}
+
+          <textarea
+            className="w-full border rounded-xl px-4 py-2 md:col-span-2"
+            placeholder="Description"
+            value={form.description}
+            onChange={handleChange('description')}
+          />
+
+          <input
+            type="date"
+            className="w-full border rounded-xl px-4 py-2"
+            value={form.dueDate}
+            onChange={handleChange('dueDate')}
+            required
+          />
+
+          <input
+            type="file"
+            className="w-full border rounded-xl px-4 py-2"
+            onChange={handleChange('file')}
+          />
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="md:col-span-2 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-xl transition font-medium"
+          >
+            {submitting ? 'Creating...' : 'Create Assignment'}
           </button>
         </form>
-      </article>
+      </div>
 
-      <article className="section-panel">
+      {/* SEARCH */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
         <input
           type="search"
-          placeholder="Search by title, subject, or description"
+          placeholder="Search assignments..."
+          className="w-full border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="form-control"
         />
+      </div>
+
+      {/* LIST */}
+      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
 
         {loading ? (
-          <LoadingSkeleton rows={4} columns={1} />
+          <div className="p-6">
+            <LoadingSkeleton rows={4} columns={1} />
+          </div>
         ) : filtered.length === 0 ? (
-          <div className="notice-card">No assignments found.</div>
+          <div className="p-6 text-gray-500">No assignments found.</div>
         ) : (
-          <div className="table-responsive">
-            <table className="data-table">
-              <thead>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+
+              <thead className="bg-gray-50 text-gray-600">
                 <tr>
-                  <th>Title</th>
-                  <th>Subject</th>
-                  <th>Description</th>
-                  <th>Due Date</th>
-                  <th>Info</th>
+                  <th className="p-3">Title</th>
+                  <th className="p-3">Subject</th>
+                  <th className="p-3">Description</th>
+                  <th className="p-3">Due Date</th>
+                  <th className="p-3">Actions</th>
                 </tr>
               </thead>
+
               <tbody>
-                {filtered.map((assignment) => (
-                  <tr key={assignment._id}>
-                    <td>{assignment.title}</td>
-                    <td>{assignment.subject}</td>
-                    <td>{assignment.description}</td>
-                    <td>{new Date(assignment.dueDate).toLocaleDateString()}</td>
-                    <td>
-                      {assignment.file?.url && (
-                        <a className="button button-secondary" href={assignment.file.url} target="_blank" rel="noreferrer">
+                {filtered.map((a) => (
+                  <tr key={a._id} className="border-t hover:bg-gray-50">
+
+                    <td className="p-3 font-medium">{a.title}</td>
+                    <td className="p-3">{a.subject}</td>
+                    <td className="p-3 text-gray-600">
+                      {a.description?.slice(0, 40)}
+                    </td>
+                    <td className="p-3">
+                      {new Date(a.dueDate).toLocaleDateString()}
+                    </td>
+
+                    <td className="p-3 flex gap-2">
+                      {a.file?.url && (
+                        <a
+                          href={a.file.url}
+                          target="_blank"
+                          className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs"
+                        >
                           Download
                         </a>
                       )}
-                      <button className="button button-secondary" onClick={() => handleDelete(assignment._id)}>
+
+                      <button
+                        onClick={() => handleDelete(a._id)}
+                        className="px-3 py-1 bg-red-100 text-red-600 rounded-lg text-xs"
+                      >
                         Delete
                       </button>
                     </td>
+
                   </tr>
                 ))}
               </tbody>
+
             </table>
           </div>
         )}
-      </article>
+      </div>
     </div>
   );
 };

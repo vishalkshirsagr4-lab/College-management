@@ -33,7 +33,9 @@ const getResults = async (req, res, next) => {
       return res.status(200).json({ results });
     }
 
-    const results = await Result.find().populate('studentId', 'usn semester section').populate('subjectId', 'subjectName subjectCode');
+    const results = await Result.find()
+      .populate({ path: 'studentId', select: 'usn semester section', populate: { path: 'userId', select: 'name email' } })
+      .populate('subjectId', 'subjectName subjectCode');
     res.status(200).json({ results });
   } catch (error) {
     next(error);

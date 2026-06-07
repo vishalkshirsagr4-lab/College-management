@@ -1,6 +1,6 @@
 const Teacher = require('../models/teacher');
 const Subject = require('../models/subject');
-const Attendance = require('../models/attendence');
+const Attendance = require('../models/attendance');
 const Result = require('../models/result');
 const { uploadToS3, deleteFromS3 } = require('../config/aws-s3');
 
@@ -8,6 +8,22 @@ const getTeacherProfile = async (req, res, next) => {
   try {
     const teacher = await Teacher.findOne({ userId: req.user.id })
       .populate('userId', 'name email profileImage')
+      .populate('subjects', 'subjectName subjectCode semester');
+
+    if (!teacher) {
+      return res.status(404).json({ message: 'Teacher profile not found' });
+    }
+
+    res.status(200).json({ teacher });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getMyProfile = async (req, res, next) => {
+  try {
+    const teacher = await Teacher.findOne({ userId: req.user.id })
+      .populate('userId', 'name email role isVerified isBlocked')
       .populate('subjects', 'subjectName subjectCode semester');
 
     if (!teacher) {
@@ -44,6 +60,46 @@ const updateTeacherProfile = async (req, res, next) => {
 
     await teacher.save();
     res.status(200).json({ message: 'Teacher profile updated', teacher });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateMyProfile = async (req, res, next) => {
+  try {
+    const { phone, address, bio, qualification, experience } = req.body;
+    const teacher = await Teacher.findOne({ userId: req.user.id });
+
+    if (!teacher) {
+      return res.status(404).json({ message: 'Teacher profile not found' });
+    }
+
+    // Update editable fields
+    if (phone) teacher.phone = phone;
+    if (address) teacher.address = address;
+    if (bio) teacher.bio = bio;
+    if (qualification) teacher.qualification = qualification;
+    if (experience) teacher.experience = experience;
+
+    // Handle photo upload
+    if (req.file) {
+      if (teacher.photo?.key) {
+        await deleteFromS3(teacher.photo.key);
+      }
+      const uploadResult = await uploadToS3(req.file.buffer, 'college-management/teachers', req.file.originalname);
+      teacher.photo = {
+        url: uploadResult.url,
+        key: uploadResult.key,
+      };
+    }
+
+    await teacher.save();
+    
+    const updated = await Teacher.findById(teacher._id)
+      .populate('userId', 'name email role isVerified')
+      .populate('subjects', 'subjectName subjectCode semester');
+
+    res.status(200).json({ message: 'Profile updated successfully', teacher: updated });
   } catch (error) {
     next(error);
   }
@@ -145,7 +201,9 @@ const getStudentAttendance = async (req, res, next) => {
 
 module.exports = {
   getTeacherProfile,
+  getMyProfile,
   updateTeacherProfile,
+  updateMyProfile,
   getTeacherSubjects,
   markAttendance,
   uploadMarks,

@@ -13,18 +13,29 @@ const studentSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
+    academicYear: {
+      type: String,
+      default: '',
+    },
     semester: {
       type: Number,
-      required: true,
+      default: 1,
+    },
+    department: {
+      type: String,
+      default: 'General',
     },
     section: {
       type: String,
-      required: true,
+      default: 'A',
     },
     phone: {
       type: String,
-      required: true,
+      default: '',
     },
+    address: String,
+    emergencyContact: String,
+    emergencyContactPhone: String,
     photo: {
       url: String,
       key: String,

@@ -15,6 +15,13 @@ const assignmentSchema = new mongoose.Schema(
       ref: 'Subject',
       required: true,
     },
+    teacherId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Teacher',
+    },
+    semester: {
+      type: Number,
+    },
     dueDate: {
       type: Date,
       required: true,

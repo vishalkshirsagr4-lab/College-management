@@ -23,59 +23,105 @@ const TeacherResults = () => {
   }, []);
 
   const filtered = results.filter((item) => {
-    const query = search.toLowerCase();
+    const q = search.toLowerCase();
     return (
-      item.studentId?.usn?.toLowerCase().includes(query) ||
-      item.subject?.toLowerCase().includes(query) ||
-      item.grade?.toLowerCase().includes(query)
+      item.studentId?.usn?.toLowerCase().includes(q) ||
+      item.studentId?.userId?.name?.toLowerCase().includes(q) ||
+      item.subjectId?.subjectName?.toLowerCase().includes(q) ||
+      item.grade?.toLowerCase().includes(q)
     );
   });
 
   return (
-    <div>
-      <div className="section-card section-header">
-        <div>
-          <h1 className="page-title">Student Results</h1>
-          <p className="page-description">View and verify student exam results for your assigned subjects.</p>
+    <div className="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 lg:px-10">
+
+      {/* HEADER */}
+      <div className="max-w-6xl mx-auto mb-6">
+        <div className="bg-white rounded-2xl shadow-sm border p-5">
+          <h1 className="text-2xl font-bold text-gray-900">
+            Student Results
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">
+            View and verify student exam results for your assigned subjects.
+          </p>
         </div>
       </div>
-      <article className="section-panel">
+
+      {/* CONTENT */}
+      <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border p-5">
+
+        {/* SEARCH */}
         <input
           type="search"
-          placeholder="Search by student, subject, or grade"
+          placeholder="Search by student, subject, or grade..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="form-control"
+          className="w-full border rounded-xl px-4 py-3 mb-5 outline-none focus:ring-2 focus:ring-blue-500"
         />
+
+        {/* LOADING */}
         {loading ? (
           <LoadingSkeleton rows={4} columns={1} />
         ) : filtered.length === 0 ? (
-          <div className="notice-card">No results available.</div>
+          <div className="text-center text-gray-500 py-10">
+            No results available.
+          </div>
         ) : (
-          <div className="table-responsive">
-            <table className="data-table">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left border-collapse">
+
               <thead>
-                <tr>
-                  <th>Student</th>
-                  <th>Subject</th>
-                  <th>Score</th>
-                  <th>Grade</th>
+                <tr className="bg-gray-100 text-gray-700">
+                  <th className="p-3">Student</th>
+                  <th className="p-3">Subject</th>
+                  <th className="p-3">Marks</th>
+                  <th className="p-3">Grade</th>
                 </tr>
               </thead>
+
               <tbody>
                 {filtered.map((result) => (
-                  <tr key={result._id}>
-                    <td>{result.studentId?.usn || 'Unknown'}</td>
-                    <td>{result.subject}</td>
-                    <td>{result.score}</td>
-                    <td>{result.grade}</td>
+                  <tr
+                    key={result._id}
+                    className="border-b hover:bg-gray-50 transition"
+                  >
+                    <td className="p-3">
+                      {result.studentId?.usn ||
+                        result.studentId?.userId?.name ||
+                        'Unknown'}
+                    </td>
+
+                    <td className="p-3">
+                      {result.subjectId?.subjectName || 'Unknown'}
+                    </td>
+
+                    <td className="p-3 font-medium">
+                      {result.marks}
+                    </td>
+
+                    <td className="p-3">
+                      <span
+                        className={`px-2 py-1 rounded-lg text-xs font-semibold ${
+                          result.grade === 'A'
+                            ? 'bg-green-100 text-green-700'
+                            : result.grade === 'B'
+                            ? 'bg-blue-100 text-blue-700'
+                            : result.grade === 'C'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-red-100 text-red-700'
+                        }`}
+                      >
+                        {result.grade || 'N/A'}
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
+
             </table>
           </div>
         )}
-      </article>
+      </div>
     </div>
   );
 };

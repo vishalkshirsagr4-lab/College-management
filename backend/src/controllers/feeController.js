@@ -3,7 +3,7 @@ const Student = require('../models/student');
 
 const createFee = async (req, res, next) => {
   try {
-    const { studentId, amount, status, paymentDate } = req.body;
+    const { studentId, amount, status, semester, paymentDate, remarks } = req.body;
     if (!studentId || amount == null || !status) {
       return res.status(400).json({ message: 'studentId, amount, and status are required' });
     }
@@ -13,7 +13,7 @@ const createFee = async (req, res, next) => {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    const fee = await Fee.create({ studentId, amount, status, paymentDate });
+    const fee = await Fee.create({ studentId, amount, status, semester, paymentDate, remarks });
     res.status(201).json({ message: 'Fee record created', fee });
   } catch (error) {
     next(error);
@@ -31,7 +31,7 @@ const getFees = async (req, res, next) => {
       return res.status(200).json({ fees });
     }
 
-    const fees = await Fee.find().populate('studentId', 'usn semester section');
+    const fees = await Fee.find().populate({ path: 'studentId', select: 'usn semester section', populate: { path: 'userId', select: 'name email' } });
     res.status(200).json({ fees });
   } catch (error) {
     next(error);
@@ -67,7 +67,9 @@ const updateFee = async (req, res, next) => {
 
     fee.amount = req.body.amount == null ? fee.amount : req.body.amount;
     fee.status = req.body.status || fee.status;
+    fee.semester = req.body.semester == null ? fee.semester : req.body.semester;
     fee.paymentDate = req.body.paymentDate || fee.paymentDate;
+    fee.remarks = req.body.remarks || fee.remarks;
 
     await fee.save();
     res.status(200).json({ message: 'Fee updated', fee });

@@ -17,8 +17,15 @@ const feeSchema = new mongoose.Schema(
       required: true,
       default: 'Unpaid',
     },
+    semester: {
+      type: Number,
+    },
     paymentDate: {
       type: Date,
+    },
+    remarks: {
+      type: String,
+      trim: true,
     },
   },
   { timestamps: true }

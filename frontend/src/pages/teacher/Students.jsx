@@ -23,59 +23,95 @@ const TeacherStudents = () => {
   }, []);
 
   const filtered = students.filter((student) => {
-    const query = search.toLowerCase();
+    const q = search.toLowerCase();
     return (
-      student.userId?.name?.toLowerCase().includes(query) ||
-      student.userId?.email?.toLowerCase().includes(query) ||
-      student.usn?.toLowerCase().includes(query)
+      student.userId?.name?.toLowerCase().includes(q) ||
+      student.userId?.email?.toLowerCase().includes(q) ||
+      student.usn?.toLowerCase().includes(q)
     );
   });
 
   return (
-    <div>
-      <div className="section-card section-header">
-        <div>
-          <h1 className="page-title">Student Directory</h1>
-          <p className="page-description">Browse your students and quickly check their basic details.</p>
+    <div className="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 lg:px-10">
+
+      {/* HEADER */}
+      <div className="max-w-6xl mx-auto mb-6">
+        <div className="bg-white rounded-2xl shadow-sm border p-5">
+          <h1 className="text-2xl font-bold text-gray-900">
+            Student Directory
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">
+            Browse your students and quickly check their basic details.
+          </p>
         </div>
       </div>
-      <article className="section-panel">
+
+      {/* TABLE CARD */}
+      <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border p-5">
+
+        {/* SEARCH */}
         <input
           type="search"
-          placeholder="Search students by name, email, or USN"
+          placeholder="Search students by name, email, or USN..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="form-control"
+          className="w-full border rounded-xl px-4 py-3 mb-5 outline-none focus:ring-2 focus:ring-blue-500"
         />
+
+        {/* LOADING */}
         {loading ? (
           <LoadingSkeleton rows={4} columns={1} />
         ) : filtered.length === 0 ? (
-          <div className="notice-card">No students found.</div>
+          <div className="text-center text-gray-500 py-10">
+            No students found.
+          </div>
         ) : (
-          <div className="table-responsive">
-            <table className="data-table">
+          <div className="overflow-x-auto">
+
+            <table className="w-full text-sm text-left border-collapse">
+
               <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>USN</th>
-                  <th>Semester</th>
+                <tr className="bg-gray-100 text-gray-700">
+                  <th className="p-3">Name</th>
+                  <th className="p-3">Email</th>
+                  <th className="p-3">USN</th>
+                  <th className="p-3">Semester</th>
                 </tr>
               </thead>
+
               <tbody>
                 {filtered.map((student) => (
-                  <tr key={student._id}>
-                    <td>{student.userId?.name}</td>
-                    <td>{student.userId?.email}</td>
-                    <td>{student.usn}</td>
-                    <td>{student.semester}</td>
+                  <tr
+                    key={student._id}
+                    className="border-b hover:bg-gray-50 transition"
+                  >
+                    <td className="p-3 font-medium text-gray-900">
+                      {student.userId?.name || 'N/A'}
+                    </td>
+
+                    <td className="p-3 text-gray-600">
+                      {student.userId?.email || 'N/A'}
+                    </td>
+
+                    <td className="p-3">
+                      <span className="px-2 py-1 text-xs rounded-lg bg-blue-100 text-blue-700 font-medium">
+                        {student.usn || 'N/A'}
+                      </span>
+                    </td>
+
+                    <td className="p-3">
+                      <span className="px-2 py-1 text-xs rounded-lg bg-green-100 text-green-700 font-medium">
+                        Sem {student.semester || 'N/A'}
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
+
             </table>
           </div>
         )}
-      </article>
+      </div>
     </div>
   );
 };

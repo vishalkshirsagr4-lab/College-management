@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getStudents } from '../../api/admin.api';
-import { createStudentProfile } from '../../api/student.api';
 import LoadingSkeleton from '../../components/ui/LoadingSkeleton';
 import { toast } from 'react-toastify';
 
@@ -8,8 +7,6 @@ const Students = () => {
   const [students, setStudents] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-  const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState({ userId: '', usn: '', semester: '', section: '', phone: '', photo: null });
 
   useEffect(() => {
     const load = async () => {
@@ -26,8 +23,8 @@ const Students = () => {
   }, []);
 
   const filtered = useMemo(() => {
+    const query = search.toLowerCase();
     return students.filter((student) => {
-      const query = search.toLowerCase();
       return (
         student.usn?.toLowerCase().includes(query) ||
         student.userId?.name?.toLowerCase().includes(query) ||
@@ -36,112 +33,93 @@ const Students = () => {
     });
   }, [search, students]);
 
-  const handleChange = (key) => (event) => {
-    const value = key === 'photo' ? event.target.files[0] : event.target.value;
-    setForm({ ...form, [key]: value });
-  };
-
-  const handleCreate = async (event) => {
-    event.preventDefault();
-    try {
-      const formData = new FormData();
-      formData.append('userId', form.userId);
-      formData.append('usn', form.usn);
-      formData.append('semester', form.semester);
-      formData.append('section', form.section);
-      formData.append('phone', form.phone);
-      if (form.photo) {
-        formData.append('photo', form.photo);
-      }
-
-      await createStudentProfile(formData);
-      toast.success('Student profile created successfully.');
-      setForm({ userId: '', usn: '', semester: '', section: '', phone: '', photo: null });
-      setFormOpen(false);
-    } catch (error) {
-      toast.error(error?.response?.data?.message || 'Unable to create student profile.');
-    }
-  };
-
   return (
-    <div>
-      <div className="section-card section-header">
-        <div>
-          <h1 className="page-title">Student Management</h1>
-          <p className="page-description">View, search, and create student profiles using the college backend.</p>
-        </div>
-        <button className="button button-primary" onClick={() => setFormOpen((value) => !value)}>
-          {formOpen ? 'Close Form' : 'Create Student Profile'}
-        </button>
+    <div className="space-y-6">
+
+      {/* HEADER */}
+      <div className="rounded-3xl bg-white border border-slate-200 p-6 shadow-sm">
+        <h1 className="text-2xl font-semibold text-slate-900">
+          Student Management
+        </h1>
+        <p className="text-slate-500 mt-1">
+          View student profiles and search the full student roster.
+        </p>
       </div>
 
-      {formOpen && (
-        <article className="section-panel">
-          <h2>Create new student profile</h2>
-          <p className="text-muted">Use an existing user ID to link the profile to an authenticated student account.</p>
-          <form className="form-grid" onSubmit={handleCreate}>
-            <label>User ID</label>
-            <input value={form.userId} onChange={handleChange('userId')} required placeholder="Existing student user ID" />
-            <label>USN</label>
-            <input value={form.usn} onChange={handleChange('usn')} required placeholder="University serial number" />
-            <label>Semester</label>
-            <input type="number" value={form.semester} onChange={handleChange('semester')} required />
-            <label>Section</label>
-            <input value={form.section} onChange={handleChange('section')} required />
-            <label>Phone</label>
-            <input value={form.phone} onChange={handleChange('phone')} required placeholder="Phone number" />
-            <label>Profile photo</label>
-            <input type="file" accept="image/*" onChange={handleChange('photo')} />
-            <button type="submit" className="button button-primary">
-              Save profile
-            </button>
-          </form>
-        </article>
-      )}
+      {/* SEARCH + TABLE CARD */}
+      <div className="rounded-3xl bg-white border border-slate-200 shadow-sm overflow-hidden">
 
-      <article className="section-panel">
-        <div className="section-header">
-          <h2>Student roster</h2>
+        {/* Top Bar */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-5 border-b border-slate-100">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Student Roster
+          </h2>
+
           <input
             type="search"
-            placeholder="Search by name, email or USN"
+            placeholder="Search by name, email or USN..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="form-control"
+            className="w-full md:w-80 px-4 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
           />
         </div>
 
-        {loading ? (
-          <LoadingSkeleton rows={4} columns={1} />
-        ) : filtered.length === 0 ? (
-          <div className="notice-card">No students match your search.</div>
-        ) : (
-          <div className="table-responsive">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>USN</th>
-                  <th>Semester</th>
-                  <th>Section</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((student) => (
-                  <tr key={student._id}>
-                    <td>{student.userId?.name || 'Unknown'}</td>
-                    <td>{student.userId?.email}</td>
-                    <td>{student.usn}</td>
-                    <td>{student.semester}</td>
-                    <td>{student.section}</td>
+        {/* CONTENT */}
+        <div className="p-5">
+
+          {loading ? (
+            <LoadingSkeleton rows={5} columns={1} />
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-10 text-slate-500">
+              No students found
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-slate-100">
+              <table className="w-full text-sm">
+
+                <thead className="bg-slate-50 text-slate-600">
+                  <tr>
+                    <th className="text-left px-4 py-3">Name</th>
+                    <th className="text-left px-4 py-3">Email</th>
+                    <th className="text-left px-4 py-3">USN</th>
+                    <th className="text-left px-4 py-3">Semester</th>
+                    <th className="text-left px-4 py-3">Section</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </article>
+                </thead>
+
+                <tbody className="divide-y divide-slate-100">
+                  {filtered.map((student) => (
+                    <tr
+                      key={student._id}
+                      className="hover:bg-slate-50 transition"
+                    >
+                      <td className="px-4 py-3 font-medium text-slate-900">
+                        {student.userId?.name || 'Unknown'}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {student.userId?.email || 'Unknown'}
+                      </td>
+                      <td className="px-4 py-3 text-slate-700">
+                        {student.usn || 'N/A'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="px-3 py-1 rounded-full bg-sky-50 text-sky-700 text-xs font-semibold">
+                          {student.semester || 'N/A'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-700">
+                        {student.section || 'N/A'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+
+              </table>
+            </div>
+          )}
+
+        </div>
+      </div>
     </div>
   );
 };

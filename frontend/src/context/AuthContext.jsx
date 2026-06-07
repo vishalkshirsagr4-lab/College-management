@@ -60,6 +60,18 @@ export const AuthProvider = ({ children }) => {
   }, [token]);
 
   const setAuthState = ({ user: authUser, token: authToken }) => {
+    if (authToken) {
+      localStorage.setItem('token', authToken);
+    } else {
+      localStorage.removeItem('token');
+    }
+
+    if (authUser) {
+      localStorage.setItem('user', JSON.stringify(authUser));
+    } else {
+      localStorage.removeItem('user');
+    }
+
     setUser(authUser);
     setToken(authToken);
   };

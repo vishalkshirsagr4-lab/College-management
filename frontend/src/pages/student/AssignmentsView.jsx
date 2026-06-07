@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getAssignments } from '../../api/student.api';
+import { getMyAssignments } from '../../api/student.api';
 import LoadingSkeleton from '../../components/ui/LoadingSkeleton';
 
 const AssignmentsView = () => {
@@ -9,7 +9,7 @@ const AssignmentsView = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const response = await getAssignments();
+        const response = await getMyAssignments();
         setAssignments(response.data.assignments || []);
       } catch {
         setAssignments([]);
@@ -21,42 +21,84 @@ const AssignmentsView = () => {
   }, []);
 
   const sortedAssignments = useMemo(
-    () => assignments.slice().sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)),
+    () =>
+      assignments
+        .slice()
+        .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)),
     [assignments]
   );
 
+  const isActive = (dueDate) => new Date(dueDate) >= new Date();
+
   return (
-    <div>
-      <div className="section-card">
-        <div>
-          <h1 className="page-title">Assignments</h1>
-          <p className="page-description">Your pending coursework, due dates, and downloadable materials.</p>
-        </div>
+    <div className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+          Assignments
+        </h1>
+        <p className="text-gray-500 mt-1 text-sm sm:text-base">
+          Your coursework, due dates, and downloadable materials
+        </p>
       </div>
 
+      {/* Loading */}
       {loading ? (
         <LoadingSkeleton rows={3} columns={1} />
       ) : sortedAssignments.length === 0 ? (
-        <div className="section-card">No assignments are available right now.</div>
+        <div className="bg-white border border-gray-100 rounded-2xl p-6 text-gray-600">
+          No assignments are available right now.
+        </div>
       ) : (
-        <div className="list-card">
+        <div className="grid gap-4 sm:gap-5">
           {sortedAssignments.map((assignment) => {
             const dueDate = new Date(assignment.dueDate);
-            const isDue = dueDate >= new Date();
+            const active = isActive(dueDate);
+
             return (
-              <article key={assignment._id} className="assignment-card">
-                <div className="assignment-card-header">
-                  <h3>{assignment.title}</h3>
-                  <span className={`status-pill ${isDue ? 'green' : 'red'}`}>
-                    {isDue ? 'Pending' : 'Expired'}
+              <article
+                key={assignment._id}
+                className="bg-white border border-gray-100 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md transition"
+              >
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {assignment.title}
+                  </h3>
+
+                  <span
+                    className={`text-xs font-semibold px-3 py-1 rounded-full w-fit ${
+                      active
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-red-100 text-red-700'
+                    }`}
+                  >
+                    {active ? 'Pending' : 'Expired'}
                   </span>
                 </div>
-                <p className="text-muted">Due {dueDate.toLocaleDateString()}</p>
-                <p>{assignment.description || 'No additional details available.'}</p>
-                <div className="assignment-actions">
-                  <button className="button button-primary">Upload Answer</button>
+
+                {/* Info */}
+                <p className="text-sm text-gray-500 mt-2">
+                  Due: {dueDate.toLocaleDateString()}
+                </p>
+
+                <p className="text-gray-700 mt-3 text-sm leading-6">
+                  {assignment.description || 'No additional details available.'}
+                </p>
+
+                {/* Actions */}
+                <div className="mt-5 flex flex-col sm:flex-row gap-3 sm:items-center">
+                  <button className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition w-full sm:w-auto">
+                    Upload Answer
+                  </button>
+
                   {assignment.file?.url && (
-                    <a className="button button-secondary" href={assignment.file.url} target="_blank" rel="noreferrer">
+                    <a
+                      href={assignment.file.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition text-center w-full sm:w-auto"
+                    >
                       Download
                     </a>
                   )}
