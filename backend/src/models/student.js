@@ -9,6 +9,11 @@ const studentSchema = new mongoose.Schema(
       unique: true,
     },
 
+    profileImage: {
+      type: String,
+      default: "",
+    },
+
     department: {
       type: String,
       required: true,
@@ -80,22 +85,9 @@ const studentSchema = new mongoose.Schema(
       default: "2026-27",
     },
 
-    parentName: {
-      type: String,
-    },
-
-    parentPhone: {
-      type: String,
-    },
-
-    guardianEmail: {
-      type: String,
-    },
-
-    profileImage: {
-      type: String,
-      default: "",
-    },
+    parentName: String,
+    parentPhone: String,
+    guardianEmail: String,
 
     attendancePercentage: {
       type: Number,

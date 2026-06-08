@@ -14,7 +14,10 @@ const facultySchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-
+    profileImage: {
+      type: String,
+      default: "",
+    },
     designation: {
       type: String,
       required: true,

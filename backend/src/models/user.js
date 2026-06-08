@@ -11,10 +11,6 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-    profilePicture: {
-      type: String,
-      default: "",
-    },
     email: {
       type: String,
       required: true,
