@@ -1,53 +1,126 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const studentSchema = new mongoose.Schema(
   {
-    userId: {
+    userID: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
       unique: true,
     },
-    usn: {
-      type: String,
-      required: true,
-      unique: true,
-    },
-    academicYear: {
-      type: String,
-      default: '',
-    },
-    semester: {
-      type: Number,
-      default: 1,
-    },
+
     department: {
       type: String,
-      default: 'General',
+      required: true,
+      trim: true,
     },
+
+    semester: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 8,
+    },
+
     section: {
       type: String,
-      default: 'A',
+      required: true,
+      trim: true,
     },
-    phone: {
+
+    rollNo: {
       type: String,
-      default: '',
+      required: true,
+      unique: true,
     },
-    address: String,
-    emergencyContact: String,
-    emergencyContactPhone: String,
-    photo: {
-      url: String,
-      key: String,
+
+    loginID: {
+      type: String,
+      required: true,
+      unique: true,
     },
+
     subjects: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Subject',
+        type: String,
+        trim: true,
       },
     ],
+
+    phone: {
+      type: String,
+      required: true,
+    },
+
+    address: {
+      type: String,
+      required: true,
+    },
+
+    dateOfBirth: {
+      type: Date,
+    },
+
+    gender: {
+      type: String,
+      enum: ["Male", "Female", "Other"],
+    },
+
+    bloodGroup: {
+      type: String,
+    },
+
+    admissionYear: {
+      type: Number,
+      required: true,
+    },
+
+    academicYear: {
+      type: String,
+      default: "2026-27",
+    },
+
+    parentName: {
+      type: String,
+    },
+
+    parentPhone: {
+      type: String,
+    },
+
+    guardianEmail: {
+      type: String,
+    },
+
+    profileImage: {
+      type: String,
+      default: "",
+    },
+
+    attendancePercentage: {
+      type: Number,
+      default: 0,
+    },
+
+    cgpa: {
+      type: Number,
+      default: 0,
+    },
+
+    feeStatus: {
+      type: String,
+      enum: ["Paid", "Pending", "Partial"],
+      default: "Pending",
+    },
+
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-module.exports = mongoose.model('Student', studentSchema);
+module.exports = mongoose.model("Student", studentSchema);

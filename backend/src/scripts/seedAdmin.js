@@ -1,34 +1,58 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-require('dotenv').config();
+const path = require('path');
+
+require('dotenv').config({
+  path: path.resolve(__dirname, '../../.env'),
+});
 
 const User = require('../models/user');
 
 async function seedAdmin() {
   try {
-    const password = process.env.SEED_ADMIN_PASSWORD;
-    const email = process.env.SEED_ADMIN_EMAIL;
     const name = process.env.SEED_ADMIN_NAME || 'Admin';
+    const email = process.env.SEED_ADMIN_EMAIL;
+    const loginID = process.env.SEED_ADMIN_LOGIN_ID;
+    const password = process.env.SEED_ADMIN_PASSWORD;
 
-    const existingAdmin = await User.findOne({ email, role: 'admin' });
+    if (!email || !loginID || !password) {
+      throw new Error(
+        'SEED_ADMIN_EMAIL, SEED_ADMIN_LOGIN_ID and SEED_ADMIN_PASSWORD are required'
+      );
+    }
+
+    const existingAdmin = await User.findOne({
+      $or: [{ email }, { loginID }],
+      role: 'admin',
+    });
+
     if (existingAdmin) {
-      console.log('Admin already exists:', existingAdmin.email);
+      console.log('Admin already exists');
 
-      const passwordMatches = await bcrypt.compare(password, existingAdmin.password);
+      const passwordMatches = await bcrypt.compare(
+        password,
+        existingAdmin.password
+      );
+
       if (!passwordMatches) {
-        existingAdmin.password = password;
+        existingAdmin.password = await bcrypt.hash(password, 10);
         existingAdmin.isVerified = true;
+
         await existingAdmin.save();
-        console.log('Admin password updated from SEED_ADMIN_PASSWORD.');
+
+        console.log('Admin password updated');
       }
 
       return;
     }
 
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const admin = await User.create({
       name,
       email,
-      password,
+      loginID,
+      password: hashedPassword,
       role: 'admin',
       isVerified: true,
       profileImage: {
@@ -39,20 +63,25 @@ async function seedAdmin() {
 
     console.log('✓ Admin created successfully');
     console.log('Email:', admin.email);
-    console.log('Password:', password);
-    console.log('\n⚠️  IMPORTANT: Change this password after first login!');
+    console.log('Login ID:', admin.loginID);
   } catch (error) {
-    console.error('Error seeding admin:', error.message);
-    throw error;
+    console.error('Error seeding admin:', error);
   }
 }
 
-// Allow running this script directly: `node seedAdmin.js`
+module.exports = seedAdmin;
+
 if (require.main === module) {
   (async () => {
     try {
+      if (!process.env.MONGO_URI) {
+        throw new Error('MONGO_URI missing in .env');
+      }
+
       await mongoose.connect(process.env.MONGO_URI);
+
       console.log('Connected to MongoDB');
+
       await seedAdmin();
     } catch (err) {
       console.error(err);
@@ -63,5 +92,3 @@ if (require.main === module) {
     }
   })();
 }
-
-module.exports = seedAdmin;
