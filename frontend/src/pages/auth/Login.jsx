@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
@@ -11,7 +11,7 @@ export default function Login() {
   const location = useLocation();
   const { login } = useAuth();
 
-  const [email, setEmail] = useState("");
+  const [loginID, setLoginID] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -23,20 +23,26 @@ export default function Login() {
 
     try {
       const res = await api.post("/api/auth/login", {
-        email,
+        loginID,
         password,
       });
 
       const data = res.data;
 
-      login({ token: data.token, user: data.user });
+      // Adjust according to your backend response
+      login({
+        token: data.token,
+        user: data.user,
+      });
 
       toast.success("Welcome back 👋");
 
       navigate(from, { replace: true });
     } catch (err) {
+      console.error(err?.response?.data);
+
       toast.error(
-        err?.response?.data?.message || "Invalid credentials"
+        err?.response?.data?.message || "Invalid Login ID or Password"
       );
     } finally {
       setLoading(false);
@@ -45,79 +51,68 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-      {/* Card */}
       <div className="w-full max-w-md">
-        <div className="bg-white border border-slate-200 shadow-lg rounded-2xl p-8">
-          
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-lg p-8">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="text-3xl font-bold text-slate-900">
-              Welcome Back
-            </div>
-            <p className="text-sm text-slate-500 mt-2">
-              Sign in to your College ERP system
+            <h1 className="text-3xl font-bold text-slate-900">
+              KLE BCA COLLEGE
+            </h1>
+
+            <p className="mt-2 text-sm text-slate-500">
+              Sign in to your College Management System
             </p>
           </div>
 
           {/* Form */}
           <form onSubmit={onSubmit} className="space-y-5">
-            
-            {/* Email */}
+            {/* Login ID */}
             <div>
-              <label className="text-sm font-medium text-slate-700">
-                Email Address
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Login ID
               </label>
+
               <Input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                type="email"
-                placeholder="you@example.com"
-                className="mt-1 w-full"
+                type="text"
+                value={loginID}
+                onChange={(e) => setLoginID(e.target.value)}
+                placeholder="STU001 / FAC001 / ADMIN001"
+                className="w-full"
                 required
               />
             </div>
 
             {/* Password */}
             <div>
-              <label className="text-sm font-medium text-slate-700">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
                 Password
               </label>
+
               <Input
+                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                type="password"
-                placeholder="••••••••"
-                className="mt-1 w-full"
+                placeholder="Enter password"
+                className="w-full"
                 required
               />
             </div>
 
-            {/* Button */}
+            {/* Submit */}
             <Button
               type="submit"
               fullWidth
               disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg py-2 transition"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-3 transition"
             >
-              {loading ? "Signing in..." : "Login"}
+              {loading ? "Signing In..." : "Login"}
             </Button>
-
-            {/* Footer */}
-            <div className="text-center text-sm text-slate-500">
-              Don’t have an account?{" "}
-              <Link
-                to="/register"
-                className="text-blue-600 font-medium hover:underline"
-              >
-                Create account
-              </Link>
-            </div>
           </form>
         </div>
 
-        {/* Bottom text */}
+        {/* Footer */}
         <p className="text-center text-xs text-slate-400 mt-6">
-          © {new Date().getFullYear()} College ERP System
+          © {new Date().getFullYear()} KLE BCA COLLEGE. All rights reserved.
         </p>
       </div>
     </div>

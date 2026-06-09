@@ -191,4 +191,69 @@ const getMyAttendance = async (req, res) => {
   }
 };
 
-module.exports = { markAttendance, getMyAttendance };
+const getSemesterAttendance = async (req, res) => {
+  try {
+    const student = await Student.findOne({ userID: req.user.id });
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    const attendanceDocs = await Attendance.find({
+      department: student.department,
+      section: student.section,
+      students: { $elemMatch: { studentId: student._id } },
+    });
+
+    const map = new Map();
+
+    for (const doc of attendanceDocs) {
+      const sem = `Sem ${doc.semester}`;
+
+      if (!map.has(sem)) {
+        map.set(sem, {
+          semester: sem,
+          total: 0,
+          attended: 0,
+        });
+      }
+
+      const entry = map.get(sem);
+
+      entry.total += 1;
+
+      const studentEntry = doc.students.find(
+        (s) => String(s.studentId) === String(student._id)
+      );
+
+      if (studentEntry?.status === "Present") {
+        entry.attended += 1;
+      }
+    }
+
+    // convert to percentage
+    const result = Array.from(map.values()).map((x) => ({
+      name: x.semester,
+      value:
+        x.total === 0
+          ? 0
+          : Math.round((x.attended / x.total) * 100),
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+module.exports = { markAttendance, getMyAttendance, getSemesterAttendance };

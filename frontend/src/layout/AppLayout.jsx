@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
-import { Outlet } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import Sidebar from './Sidebar';
-import Topbar from './Topbar';
+import { useEffect, useState } from "react";
+import { Outlet } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import Sidebar from "./Sidebar";
+import Topbar from "./Topbar";
 
 export default function AppLayout() {
   const { user } = useAuth();
@@ -10,33 +10,37 @@ export default function AppLayout() {
 
   useEffect(() => {
     const onKeyDown = (e) => {
-      if (e.key === 'Escape') setMobileOpen(false);
+      if (e.key === "Escape") setMobileOpen(false);
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
   return (
-    <div className="min-h-dvh bg-white text-slate-800">
-      <div className="lg:flex">
-        <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
+    <div className="min-h-screen bg-white text-slate-800 flex">
+      {/* Sidebar */}
+      <Sidebar
+        mobileOpen={mobileOpen}
+        setMobileOpen={setMobileOpen}
+      />
 
-        {mobileOpen ? (
-          <div
-            className="fixed inset-0 z-30 bg-black/30 sm:hidden"
-            onClick={() => setMobileOpen(false)}
-          />
-        ) : null}
+      {/* Mobile Overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
 
-        <div className="flex-1 lg:ml-72">
-          <Topbar onMenu={() => setMobileOpen(true)} user={user} />
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <Topbar onMenu={() => setMobileOpen(true)} user={user} />
 
-          <main className="p-4 sm:p-6 lg:p-8">
-            <Outlet />
-          </main>
-        </div>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+          <Outlet />
+        </main>
       </div>
     </div>
   );
 }
-

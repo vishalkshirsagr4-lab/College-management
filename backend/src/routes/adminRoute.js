@@ -4,7 +4,8 @@ const { createFaculty , updateFacultySemester ,deleteSemester ,getAllFaculty, ge
 const { createStudent, updateStudent, deleteStudent , resetPassword ,  getAllStudents , getStudentById , updateStudentProfileImage } = require("../controlls/adminstudentControl");
 const { createSubject , updateSubject , deleteSubject , getAllSubjects , getSubjectById , getSubjectsBySemester   } = require("../controlls/adminsubjectControl");
 const { createTimetable , updateTimetable , deleteTimetable } = require("../controlls/adminTimecontrol");
-const { createExam } = require("../controlls/adminExamControl");
+const { createExam,getExams,updateExam,deleteExam } = require("../controlls/adminExamControl");
+const { getSemesterAttendance } = require("../controlls/attendenceControl");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 const upload = require("../middleware/upload");
@@ -168,6 +169,34 @@ router.post(
   authMiddleware,
   roleMiddleware("admin"),
   createExam
+);
+  
+router.get(
+  "/exams",
+  authMiddleware,
+  roleMiddleware("admin"),
+  getExams
+);
+
+router.put(
+  "/exams/:examId",
+  authMiddleware,
+  roleMiddleware("admin"),
+  updateExam
+);
+
+router.delete(
+  "/exams/:examId",
+  authMiddleware,
+  roleMiddleware("admin"),
+  deleteExam
+);
+
+router.get(
+  "/attendance/semester/:semester",
+  authMiddleware,
+  roleMiddleware("admin"),
+  getSemesterAttendance
 );
 
 module.exports = router;
