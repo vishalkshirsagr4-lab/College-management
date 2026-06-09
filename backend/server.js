@@ -6,8 +6,12 @@ const seedAdmin = require("./src/scripts/seedAdmin");
 
 const authRoutes = require("./src/routes/authRoutes");
 const adminRoutes = require("./src/routes/adminRoute");
+const facultyRoutes = require("./src/routes/facultyRoute");
+const studentRoutes = require("./src/routes/studentRoute");
+const notificationRoutes = require("./src/routes/notificationRoute");
 
 require("dotenv").config();
+
 
 const dns = require("dns");
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
@@ -22,6 +26,9 @@ app.use(cookieParser());
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/faculty", facultyRoutes);
+app.use("/api/student", studentRoutes);
+app.use("/api/notification", notificationRoutes);
 
 const startServer = async () => {
   try {

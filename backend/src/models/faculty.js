@@ -25,22 +25,13 @@ const facultySchema = new mongoose.Schema(
     },
 
     teachingAssignments: [
-      {
-        semester: {
-          type: Number,
-          required: true,
+        {
+          department: String,
+          semester: Number,
+          section: String,
+          subjects: [String],
         },
-
-        subjects: [
-          {
-            type: String,
-            required: true,
-            trim: true,
-          },
-        ],
-      },
     ],
-
     phone: {
       type: String,
       required: true,

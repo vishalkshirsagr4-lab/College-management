@@ -6,35 +6,44 @@ const authMiddleware = async (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
-      return res.status(401).json({ message: "Unauthorized - No token" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized - No token",
+      });
     }
 
-    // ✅ Support: "Bearer token"
+    // Support: "Bearer token"
     const token = authHeader.startsWith("Bearer ")
       ? authHeader.split(" ")[1]
       : authHeader;
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // ✅ FIX: use decoded.id (NOT userId)
     const user = await User.findById(decoded.id).select("-password");
 
-    console.log("Authenticated user:", user);
-
     if (!user) {
-      return res.status(401).json({ message: "Unauthorized - User not found" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized - User not found",
+      });
     }
 
-    // attach full user
-    req.user = user;
-
-    // optional: attach role separately
-    req.role = user.role;
+    // ✅ FIX: standardize request user object
+    req.user = {
+      id: user._id.toString(),
+      role: user.role,
+      email: user.email,
+      loginID: user.loginID,
+    };
 
     next();
   } catch (error) {
-    console.error("Authentication error:", error.message);
-    return res.status(401).json({ message: "Unauthorized - Invalid token" });
+    console.error("Auth error:", error.message);
+
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized - Invalid token",
+    });
   }
 };
 

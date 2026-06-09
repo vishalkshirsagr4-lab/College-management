@@ -5,6 +5,7 @@ const { uploadToS3 } = require("../config/s3");
 const fs = require("fs");
 
 
+
 const createFaculty = async (req, res) => {
   try {
     const {
@@ -19,10 +20,7 @@ const createFaculty = async (req, res) => {
     } = req.body;
 
     const existingUser = await User.findOne({
-      $or: [
-        { email },
-        { loginID }
-      ]
+      $or: [{ email }, { loginID }],
     });
 
     if (existingUser) {
@@ -31,18 +29,12 @@ const createFaculty = async (req, res) => {
         message: "Faculty already exists",
       });
     }
-    
+
     let profileImage = "";
 
-    // ✅ Upload image to S3 if provided
     if (req.file) {
-      const result = await uploadToS3(
-        req.file.path,
-        "faculty-profiles"
-      );
-
+      const result = await uploadToS3(req.file.path, "faculty-profiles");
       profileImage = result.url;
-
       fs.unlinkSync(req.file.path);
     }
 
@@ -60,7 +52,7 @@ const createFaculty = async (req, res) => {
       userID: user._id,
       department,
       designation,
-      teachingAssignments,
+      teachingAssignments: teachingAssignments || [],
       phone,
       profileImage,
     });
@@ -68,11 +60,7 @@ const createFaculty = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Faculty created successfully",
-      faculty,
-      credentials: {
-        loginID,
-        password,
-      },
+      data: { user, faculty },
     });
   } catch (error) {
     res.status(500).json({

@@ -4,6 +4,7 @@ const { createFaculty , updateFacultySemester ,deleteSemester ,getAllFaculty, ge
 const { createStudent, updateStudent, deleteStudent , resetPassword ,  getAllStudents , getStudentById , updateStudentProfileImage } = require("../controlls/adminstudentControl");
 const { createSubject , updateSubject , deleteSubject , getAllSubjects , getSubjectById , getSubjectsBySemester   } = require("../controlls/adminsubjectControl");
 const { createTimetable , updateTimetable , deleteTimetable } = require("../controlls/adminTimecontrol");
+const { createExam } = require("../controlls/adminExamControl");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 const upload = require("../middleware/upload");
@@ -160,6 +161,13 @@ router.put(
   roleMiddleware("admin"),
   upload.single("profileImage"),
   updateStudentProfileImage
+);
+
+router.post(
+  "/exam",
+  authMiddleware,
+  roleMiddleware("admin"),
+  createExam
 );
 
 module.exports = router;

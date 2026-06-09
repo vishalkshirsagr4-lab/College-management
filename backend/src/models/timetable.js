@@ -54,3 +54,7 @@ timetableSchema.index(
   { facultyId: 1, day: 1, periodNo: 1 },
   { unique: true }
 );
+
+const Timetable = mongoose.model("Timetable", timetableSchema);
+
+module.exports = Timetable;

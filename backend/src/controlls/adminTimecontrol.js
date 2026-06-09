@@ -19,8 +19,21 @@ const createTimetable = async (req, res) => {
         facultyId,
         day,
         periodNo,
-        subjectName,
     });
+
+
+    const existCheck = await Timetable.findOne({
+      day,
+      periodNo,
+      subjectName,
+    });
+
+    if (existCheck ) {
+        return res.status(400).json({
+            success: false,
+            message: "This time slot already exists",
+        });
+    }
 
     if (exists) {
         return res.status(400).json({
@@ -98,6 +111,19 @@ const updateTimetable = async (req, res) => {
       day,
       periodNo,
     });
+
+     const existCheck = await Timetable.findOne({
+      day,
+      periodNo,
+      subjectName,
+    });
+
+    if (existCheck ) {
+        return res.status(400).json({
+            success: false,
+            message: "This time slot already exists",
+        });
+    }
 
     if (existingSlot) {
       return res.status(400).json({
