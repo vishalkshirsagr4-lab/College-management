@@ -3,6 +3,7 @@ const router = express.Router();
 const { createFaculty , updateFacultySemester ,deleteSemester ,getAllFaculty, getFacultyById, updateFacultyProfileImage , deleteFacultyProfileImage, } = require("../controlls/adminfacultyControl");
 const { createStudent, updateStudent, deleteStudent , resetPassword ,  getAllStudents , getStudentById , updateStudentProfileImage } = require("../controlls/adminstudentControl");
 const { createSubject , updateSubject , deleteSubject , getAllSubjects , getSubjectById , getSubjectsBySemester   } = require("../controlls/adminsubjectControl");
+const { createTimetable , updateTimetable , deleteTimetable } = require("../controlls/adminTimecontrol");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 const upload = require("../middleware/upload");
@@ -131,6 +132,27 @@ router.get(
   "/subjects/semester/:semester",
   getSubjectsBySemester
 );
+
+router.post(
+  "/timetable",
+  authMiddleware,
+  roleMiddleware("admin"),
+  createTimetable
+);
+
+router.put(
+  "/timetable/:timetableId",
+  authMiddleware,
+  roleMiddleware("admin"),
+  updateTimetable
+);
+
+router.delete(
+  "/timetable/:timetableId",
+  authMiddleware,
+  roleMiddleware("admin"),
+  deleteTimetable
+);  
 
 router.put(
   "/student/profile-image/:studentId",
