@@ -92,7 +92,6 @@ const deleteSubject = async (req, res) => {
   }
 };
 
-
 const getAllSubjects = async (req, res) => {
   try {
     const subjects = await Subject.find();

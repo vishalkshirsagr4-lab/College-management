@@ -1,0 +1,6 @@
+- [ ] Refactor Teaching Assignments section in `frontend/src/pages/admin/CreateFacultyPage.jsx` to match requirements
+- [x] Remove old semester-column / grouped-by-semester logic and undefined draft* state references
+- [ ] Implement semester buttons, selectedSemesterData derivation, merged subject checkbox cards
+- [ ] Implement Add/Edit/Delete assignment cards with required payload shape
+- [ ] Ensure faculty submit payload includes `teachingAssignments: assignments`
+- [ ] Final quick validation: component compiles (no missing vars), UI works for add/edit/delete

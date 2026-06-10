@@ -77,7 +77,6 @@ const createTimetable = async (req, res) => {
   }
 };
 
-
 const updateTimetable = async (req, res) => {
   try {
     const { timetableId } = req.params;

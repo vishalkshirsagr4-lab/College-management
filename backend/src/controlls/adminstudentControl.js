@@ -4,7 +4,10 @@ const bcrypt = require("bcryptjs");
 const { uploadToS3, deleteFromS3 } = require("../config/s3");
 const fs = require("fs");
 
-const createStudent = async (req, res) => {
+
+ const createStudent = async (req, res) => {
+   let createdUser = null;
+
   try {
     const {
       name,
@@ -23,20 +26,39 @@ const createStudent = async (req, res) => {
       bloodGroup,
     } = req.body;
 
-    const existingUser = await User.findOne({
-      $or: [{ email }, { loginID }],
-    });
+    // Check existing email
+    const existingEmail = await User.findOne({ loginID , email });
 
-    if (existingUser) {
+    if (existingEmail) {
       return res.status(400).json({
         success: false,
-        message: "Student already exists",
+        message: "Email already exists",
+      });
+    }
+
+    // Check existing loginID
+    const existingLoginID = await User.findOne({ loginID });
+
+    if (existingLoginID) {
+      return res.status(400).json({
+        success: false,
+        message: "Login ID already exists",
+      });
+    }
+
+    // Check student roll no
+    const existingRollNo = await Student.findOne({ rollNo });
+
+    if (existingRollNo) {
+      return res.status(400).json({
+        success: false,
+        message: "Roll Number already exists",
       });
     }
 
     let profileImage = "";
 
-    // ✅ Upload image if exists
+    // Upload profile image if provided
     if (req.file) {
       const result = await uploadToS3(
         req.file.path,
@@ -45,12 +67,15 @@ const createStudent = async (req, res) => {
 
       profileImage = result.url;
 
-      fs.unlinkSync(req.file.path);
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await User.create({
+    // Create user
+    createdUser = await User.create({
       name,
       email,
       loginID,
@@ -58,8 +83,10 @@ const createStudent = async (req, res) => {
       role: "student",
     });
 
+    // Create student
     const student = await Student.create({
-      userID: user._id,
+      userID: createdUser._id,
+      profileImage,
       department,
       semester,
       section,
@@ -68,14 +95,13 @@ const createStudent = async (req, res) => {
       phone,
       address,
       admissionYear,
-      subjects: [],
-      profileImage, // ✅ added
       gender,
       dateOfBirth,
       bloodGroup,
+      subjects: [],
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Student created successfully",
       student,
@@ -85,7 +111,14 @@ const createStudent = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Create Student Error:", error);
+
+    // Rollback user if student creation fails
+    if (createdUser) {
+      await User.findByIdAndDelete(createdUser._id);
+    }
+
+    return res.status(500).json({
       success: false,
       message: error.message,
     });
