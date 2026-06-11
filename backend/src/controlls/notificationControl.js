@@ -253,9 +253,29 @@ const markNotificationAsRead = async (req, res) => {
   }
 };
 
+const getAllNotifications = async (req, res) => {
+  try {
+    const notifications = await Notification.find({})
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      data: notifications,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   sendNotification,
   getMyNotifications,
   markNotificationAsRead,
+  getAllNotifications,
 };
+
 

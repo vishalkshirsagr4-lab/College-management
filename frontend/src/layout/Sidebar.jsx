@@ -47,6 +47,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
     if (role === ROLES.FACULTY) {
       return [
         { to: "/faculty", label: "Dashboard", icon: "📚" },
+        { to: "/faculty/students", label: "Students", icon: "👥" },
         { to: "/faculty/attendance", label: "Attendance", icon: "✅" },
         { to: "/faculty/assignments", label: "Assignments", icon: "📝" },
         { to: "/faculty/marks", label: "Marks", icon: "🧾" },

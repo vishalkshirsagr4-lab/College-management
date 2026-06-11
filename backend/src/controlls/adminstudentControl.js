@@ -4,9 +4,8 @@ const bcrypt = require("bcryptjs");
 const { uploadToS3, deleteFromS3 } = require("../config/s3");
 const fs = require("fs");
 
-
- const createStudent = async (req, res) => {
-   let createdUser = null;
+const createStudent = async (req, res) => {
+  let createdUser = null;
 
   try {
     const {
@@ -26,29 +25,17 @@ const fs = require("fs");
       bloodGroup,
     } = req.body;
 
-    // Check existing email
-    const existingEmail = await User.findOne({ loginID , email });
-
-    if (existingEmail) {
+    // Fixed validation bug: check if EITHER email OR loginID is already occupied
+    const existingUser = await User.findOne({ $or: [{ email }, { loginID }] });
+    if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: "Email already exists",
-      });
-    }
-
-    // Check existing loginID
-    const existingLoginID = await User.findOne({ loginID });
-
-    if (existingLoginID) {
-      return res.status(400).json({
-        success: false,
-        message: "Login ID already exists",
+        message: existingUser.loginID === loginID ? "Login ID already exists" : "Email already exists",
       });
     }
 
     // Check student roll no
     const existingRollNo = await Student.findOne({ rollNo });
-
     if (existingRollNo) {
       return res.status(400).json({
         success: false,
@@ -60,11 +47,7 @@ const fs = require("fs");
 
     // Upload profile image if provided
     if (req.file) {
-      const result = await uploadToS3(
-        req.file.path,
-        "student-profiles"
-      );
-
+      const result = await uploadToS3(req.file.path, "student-profiles");
       profileImage = result.url;
 
       if (fs.existsSync(req.file.path)) {
@@ -74,7 +57,7 @@ const fs = require("fs");
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
+    // Create user core profile
     createdUser = await User.create({
       name,
       email,
@@ -83,7 +66,7 @@ const fs = require("fs");
       role: "student",
     });
 
-    // Create student
+    // Create student portal document linked to generated user account
     const student = await Student.create({
       userID: createdUser._id,
       profileImage,
@@ -113,7 +96,7 @@ const fs = require("fs");
   } catch (error) {
     console.error("Create Student Error:", error);
 
-    // Rollback user if student creation fails
+    // Rollback user entry if collection linkage fails mid-execution
     if (createdUser) {
       await User.findByIdAndDelete(createdUser._id);
     }
@@ -158,23 +141,29 @@ const updateStudent = async (req, res) => {
 const deleteStudent = async (req, res) => {
   try {
     const { studentId } = req.params;
-
     const student = await Student.findById(studentId);
 
     if (!student) {
       return res.status(404).json({
         success: false,
-        message: "Student not found",
+        message: "Student profile not found",
       });
     }
 
-    // delete profile image from S3
+    // Safely delete profile image from S3 storage if populated
     if (student.profileImage) {
-      await deleteFromS3(student.profileImage);
+      try {
+        await deleteFromS3(student.profileImage);
+      } catch (s3Err) {
+        console.error("Non-blocking S3 asset clearance error:", s3Err.message);
+      }
     }
 
+    // Perform operational data deletions across both connected tables
     await Student.findByIdAndDelete(studentId);
-    await User.findByIdAndDelete(student.userID);
+    if (student.userID) {
+      await User.findByIdAndDelete(student.userID);
+    }
 
     res.status(200).json({
       success: true,
@@ -191,7 +180,6 @@ const deleteStudent = async (req, res) => {
 const resetPassword = async (req, res) => {
   try {
     const { userId, newPassword } = req.body;
-
     const user = await User.findById(userId);
 
     if (!user) {
@@ -201,10 +189,7 @@ const resetPassword = async (req, res) => {
       });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    user.password = hashedPassword;
-
+    user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
 
     res.status(200).json({
@@ -242,7 +227,6 @@ const getAllStudents = async (req, res) => {
 const getStudentById = async (req, res) => {
   try {
     const { studentId } = req.params;
-
     const student = await Student.findById(studentId).populate(
       "userID",
       "name email loginID role"
@@ -270,8 +254,6 @@ const getStudentById = async (req, res) => {
 const updateStudentProfileImage = async (req, res) => {
   try {
     const { studentId } = req.params;
-
-
     const student = await Student.findById(studentId);
 
     if (!student) {
@@ -289,19 +271,20 @@ const updateStudentProfileImage = async (req, res) => {
     }
 
     if (student.profileImage) {
-      await deleteFromS3(student.profileImage);
+      try {
+        await deleteFromS3(student.profileImage);
+      } catch (err) {
+        console.error("S3 clear warning:", err.message);
+      }
     }
 
-    const result = await uploadToS3(
-      req.file.path,
-      "student-profiles"
-    );
-
+    const result = await uploadToS3(req.file.path, "student-profiles");
     student.profileImage = result.url;
-
     await student.save();
 
-    fs.unlinkSync(req.file.path);
+    if (fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
 
     res.status(200).json({
       success: true,
@@ -316,4 +299,12 @@ const updateStudentProfileImage = async (req, res) => {
   }
 };
 
-module.exports = { createStudent, updateStudent, deleteStudent , resetPassword , getAllStudents , getStudentById , updateStudentProfileImage };
+module.exports = { 
+  createStudent, 
+  updateStudent, 
+  deleteStudent, 
+  resetPassword, 
+  getAllStudents, 
+  getStudentById, 
+  updateStudentProfileImage 
+};

@@ -8,6 +8,7 @@ const {
   sendNotification,
   getMyNotifications,
   markNotificationAsRead,
+  getAllNotifications,
 } = require("../controlls/notificationControl");
 
 // Admin + Faculty
@@ -36,5 +37,17 @@ router.post(
   markNotificationAsRead
 );
 
+// Admin: list all notifications
+router.get(
+  "/all",
+  authMiddleware,
+  (req, res, next) => {
+    if (req.user.role === "admin") return next();
+    return res.status(403).json({ success: false, message: "Forbidden" });
+  },
+  getAllNotifications
+);
+
 module.exports = router;
+
 

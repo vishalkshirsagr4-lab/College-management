@@ -1,6 +1,15 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function Topbar({ onMenu, user }) {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
+
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-slate-200">
       <div className="h-14 px-4 flex items-center justify-between">
@@ -53,6 +62,16 @@ export default function Topbar({ onMenu, user }) {
               {user?.name || "User"}
             </span>
           </Link>
+
+          {/* Logout */}
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-slate-100 text-sm font-medium text-slate-700"
+          >
+            <span aria-hidden>🚪</span>
+            <span className="hidden sm:inline">Logout</span>
+          </button>
 
         </div>
       </div>

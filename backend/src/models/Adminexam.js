@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const examSchema = new mongoose.Schema(
   {
-    name: {
+    examName: {
       type: String,
       required: true, // Mid Sem / Final Exam
     },

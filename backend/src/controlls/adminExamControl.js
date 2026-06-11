@@ -44,9 +44,9 @@ const getExams = async (req, res) => {
 // ✏️ UPDATE EXAM
 const updateExam = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { examId } = req.params;
 
-    const exam = await Exam.findById(id);
+    const exam = await Exam.findById(examId);
 
     if (!exam) {
       return res.status(404).json({
@@ -56,7 +56,7 @@ const updateExam = async (req, res) => {
     }
 
     const updatedExam = await Exam.findByIdAndUpdate(
-      id,
+      examId,
       req.body,
       { new: true, runValidators: true }
     );
@@ -77,10 +77,11 @@ const updateExam = async (req, res) => {
 
 // ❌ DELETE EXAM
 const deleteExam = async (req, res) => {
+  console.log(req.params);
   try {
-    const { id } = req.params;
+    const { examId } = req.params;
 
-    const exam = await Exam.findById(id);
+    const exam = await Exam.findById(examId);
 
     if (!exam) {
       return res.status(404).json({
@@ -89,7 +90,7 @@ const deleteExam = async (req, res) => {
       });
     }
 
-    await Exam.findByIdAndDelete(id);
+    await Exam.findByIdAndDelete(examId);
 
     res.status(200).json({
       success: true,
