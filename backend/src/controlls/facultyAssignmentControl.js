@@ -23,13 +23,30 @@ const createAssignment = async (req, res) => {
       fileUrl,
     } = req.body;
 
+
     if (!title || !description || !subject || !department || !semester || !section || !dueDate) {
+
       return res.status(400).json({
         success: false,
         message:
           "title, description, subject, department, semester, section, dueDate are required",
       });
     }
+
+    // If file was uploaded via multipart/form-data, prefer it over fileUrl from body.
+    // Note: fileUrl in the frontend is not sent; multer will populate req.file.
+    let resolvedFileUrl = fileUrl || "";
+    let resolvedFileKey = "";
+
+    // multer-s3 attaches S3 metadata.
+    if (req.file) {
+      // multer-s3 puts URL and key on the file object.
+      // Depending on version, it can be: req.file.location, req.file.key, etc.
+      resolvedFileKey = req.file.key || "";
+      resolvedFileUrl = req.file.location || req.file.url || fileUrl || "";
+    }
+
+
 
     // ✅ Faculty restriction: check teachingAssignments match exactly
     const normalizedDepartment = String(department).trim();
@@ -67,8 +84,11 @@ const createAssignment = async (req, res) => {
       section: normalizedSection,
       facultyId: faculty._id,
       dueDate,
-      fileUrl: fileUrl || "",
+      fileUrl: resolvedFileUrl || "",
+      fileKey: resolvedFileKey || "",
     });
+
+
 
     return res.status(201).json({
       success: true,

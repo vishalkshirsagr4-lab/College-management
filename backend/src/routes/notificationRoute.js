@@ -42,7 +42,7 @@ router.get(
   "/all",
   authMiddleware,
   (req, res, next) => {
-    if (req.user.role === "admin") return next();
+    if (req.user.role === "admin" || req.user.role === "faculty") return next();
     return res.status(403).json({ success: false, message: "Forbidden" });
   },
   getAllNotifications

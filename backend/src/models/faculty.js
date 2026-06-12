@@ -14,10 +14,17 @@ const facultySchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    // Public S3 URL
     profileImage: {
       type: String,
       default: "",
     },
+    // S3 object key (for delete)
+    profileKey: {
+      type: String,
+      default: "",
+    },
+
     designation: {
       type: String,
       required: true,

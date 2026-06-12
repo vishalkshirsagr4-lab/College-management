@@ -35,10 +35,17 @@ const assignmentSchema = new mongoose.Schema(
       required: true,
     },
 
+    // Public S3 URL (for direct access)
     fileUrl: {
       type: String,
       default: "",
     },
+    // S3 object key (for delete functionality)
+    fileKey: {
+      type: String,
+      default: "",
+    },
+
 
     dueDate: {
       type: Date,

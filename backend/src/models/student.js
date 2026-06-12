@@ -12,6 +12,10 @@ const studentSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    profileKey: { // Added to match your controller's S3 deletion logic safely
+      type: String,
+      default: "",
+    },
     department: {
       type: String,
       required: true,

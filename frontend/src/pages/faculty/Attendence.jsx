@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import api from "../../utils/api";
 
 export default function MarkAttendancePage() {
@@ -12,6 +12,7 @@ export default function MarkAttendancePage() {
   });
 
   const [students, setStudents] = useState([]);
+  const [searchTerm, setSearchTerm] = useState(""); // <-- Search input state
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -36,24 +37,30 @@ export default function MarkAttendancePage() {
 
   // Fetch Class Roster based on configuration parameters
   const fetchClassRoster = useCallback(async () => {
-    if (!formData.department || !formData.semester || !formData.section) return;
+    if (!formData.semester || !formData.section || !formData.subject) return;
 
     try {
       setLoadingStudents(true);
       setMessage({ type: "", text: "" });
-      
+      setSearchTerm(""); // Reset search on fresh roster load
+
       const res = await api.get("/api/faculty/students");
       const completeRoster = Array.isArray(res.data?.data) ? res.data.data : [];
-      
-      // Filter the global student list to match the active configuration criteria
+
+      const semesterMatch = (student) => Number(student.semester) === Number(formData.semester);
+      const sectionMatch = (student) => student.section?.toLowerCase() === String(formData.section).toLowerCase();
+      const subjectMatch = (student) => {
+        const studentSubjects = Array.isArray(student.subjects) ? student.subjects : [];
+        return studentSubjects
+          .map((s) => (typeof s === "string" ? s.trim().toLowerCase() : ""))
+          .filter(Boolean)
+          .includes(String(formData.subject).trim().toLowerCase());
+      };
+
       const activeClassList = completeRoster.filter(
-        (student) =>
-          student.department?.toLowerCase() === formData.department.toLowerCase() &&
-          Number(student.semester) === Number(formData.semester) &&
-          student.section?.toLowerCase() === formData.section.toLowerCase()
+        (student) => semesterMatch(student) && sectionMatch(student) && subjectMatch(student)
       );
 
-      // Initialize all matched students with a default status of "Present"
       const initializedStudents = activeClassList.map((student) => ({
         studentId: student._id,
         name: student.userID?.name || "Unknown Student",
@@ -63,7 +70,7 @@ export default function MarkAttendancePage() {
 
       setStudents(initializedStudents);
       if (initializedStudents.length === 0) {
-        setMessage({ type: "info", text: "No students registered under this combination configuration." });
+        setMessage({ type: "info", text: "No students registered for this subject under the selected semester/section." });
       }
     } catch (err) {
       setMessage({ type: "error", text: "Failed to retrieve student roster data." });
@@ -71,7 +78,7 @@ export default function MarkAttendancePage() {
     } finally {
       setLoadingStudents(false);
     }
-  }, [formData.department, formData.semester, formData.section]);
+  }, [formData.semester, formData.section, formData.subject]);
 
   // Handle dropdown parameter updates
   const handleInputChange = (e) => {
@@ -80,8 +87,20 @@ export default function MarkAttendancePage() {
     // Flush active roster array if structural configuration targets clear
     if (["department", "semester", "section"].includes(name)) {
       setStudents([]);
+      setSearchTerm("");
     }
   };
+
+  // Filter students dynamically based on search query
+  const filteredStudents = useMemo(() => {
+    if (!searchTerm.trim()) return students;
+    const cleanSearch = searchTerm.toLowerCase().trim();
+    return students.filter(
+      (student) =>
+        student.name.toLowerCase().includes(cleanSearch) ||
+        student.email.toLowerCase().includes(cleanSearch)
+    );
+  }, [students, searchTerm]);
 
   // Toggle dynamic single-student record state maps
   const toggleStatus = (studentId) => {
@@ -94,9 +113,14 @@ export default function MarkAttendancePage() {
     );
   };
 
-  // Bulk Toggle helper utilities
-  const setAllStatuses = (targetStatus) => {
-    setStudents((prevList) => prevList.map((item) => ({ ...item, status: targetStatus })));
+  // Bulk Toggle helper utilities (updates only filtered items to respect search view context)
+  const setFilteredStatuses = (targetStatus) => {
+    const targetIds = filteredStudents.map((s) => s.studentId);
+    setStudents((prevList) =>
+      prevList.map((item) =>
+        targetIds.includes(item.studentId) ? { ...item, status: targetStatus } : item
+      )
+    );
   };
 
   // Handle form submission to the server
@@ -108,7 +132,6 @@ export default function MarkAttendancePage() {
       setSubmitting(true);
       setMessage({ type: "", text: "" });
 
-      // Cleanse payload down to specific keys matching the strict validation layers
       const payload = {
         department: formData.department,
         semester: Number(formData.semester),
@@ -134,9 +157,9 @@ export default function MarkAttendancePage() {
     }
   };
 
-  // Computed status counters
-  const presentCount = students.filter((s) => s.status === "Present").length;
-  const absentCount = students.filter((s) => s.status === "Absent").length;
+  // Computed status counters based on current filtered view
+  const presentCount = filteredStudents.filter((s) => s.status === "Present").length;
+  const absentCount = filteredStudents.filter((s) => s.status === "Absent").length;
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-6 md:p-12 font-sans text-slate-700 antialiased">
@@ -145,7 +168,7 @@ export default function MarkAttendancePage() {
         {/* Page Title */}
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Roll Call Management</h1>
-          <p className="text-slate-500 text-sm mt-1 font-medium">Configure configurations parameters to register daily active counts</p>
+          <p className="text-slate-500 text-sm mt-1 font-medium">Configure configuration parameters to register daily active counts</p>
         </div>
 
         {/* Global Notifications Panel */}
@@ -266,29 +289,55 @@ export default function MarkAttendancePage() {
             <p className="text-slate-400 font-bold text-sm">Collating registered academic rosters...</p>
           </div>
         ) : students.length > 0 ? (
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
             
+            {/* Search Sub-Utility Bar */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search student by name or identity email link..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-4 pr-10 py-2.5 bg-slate-50 text-slate-800 text-sm rounded-xl border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-medium"
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 font-bold text-sm"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Quick Action Metrics Toolbar */}
             <div className="bg-slate-100 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 border border-slate-200/40">
               <div className="flex items-center gap-6 text-sm font-bold">
-                <span className="text-slate-500">Total Enrolled: <strong className="text-slate-800">{students.length}</strong></span>
+                <span className="text-slate-500">
+                  Visible: <strong className="text-slate-800">{filteredStudents.length}</strong>/{students.length}
+                </span>
                 <span className="text-emerald-600">Present: <strong>{presentCount}</strong></span>
                 <span className="text-rose-600">Absent: <strong>{absentCount}</strong></span>
               </div>
               <div className="flex gap-2 w-full sm:w-auto">
                 <button
                   type="button"
-                  onClick={() => setAllStatuses("Present")}
-                  className="flex-1 sm:flex-initial px-3 py-1.5 bg-white text-emerald-700 border border-slate-200 hover:bg-emerald-50 text-xs font-bold rounded-lg transition-colors"
+                  onClick={() => setFilteredStatuses("Present")}
+                  disabled={filteredStudents.length === 0}
+                  className="flex-1 sm:flex-initial px-3 py-1.5 bg-white text-emerald-700 border border-slate-200 hover:bg-emerald-50 text-xs font-bold rounded-lg transition-colors disabled:opacity-50"
                 >
-                  Mark All Present
+                  Mark Visible Present
                 </button>
                 <button
                   type="button"
-                  onClick={() => setAllStatuses("Absent")}
-                  className="flex-1 sm:flex-initial px-3 py-1.5 bg-white text-rose-700 border border-slate-200 hover:bg-rose-50 text-xs font-bold rounded-lg transition-colors"
+                  onClick={() => setFilteredStatuses("Absent")}
+                  disabled={filteredStudents.length === 0}
+                  className="flex-1 sm:flex-initial px-3 py-1.5 bg-white text-rose-700 border border-slate-200 hover:bg-rose-50 text-xs font-bold rounded-lg transition-colors disabled:opacity-50"
                 >
-                  Mark All Absent
+                  Mark Visible Absent
                 </button>
               </div>
             </div>
@@ -305,30 +354,38 @@ export default function MarkAttendancePage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {students.map((student) => (
-                      <tr key={student.studentId} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-6 py-4">
-                          <span className="font-semibold text-slate-800 block">{student.name}</span>
-                          <span className="text-xs text-slate-400 sm:hidden block mt-0.5">{student.email}</span>
-                        </td>
-                        <td className="px-6 py-4 text-slate-500 font-medium hidden sm:table-cell">
-                          {student.email}
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <button
-                            type="button"
-                            onClick={() => toggleStatus(student.studentId)}
-                            className={`w-24 py-1.5 font-bold text-xs rounded-xl border transition-all shadow-3xs tracking-wide uppercase ${
-                              student.status === "Present"
-                                ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
-                                : "bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100"
-                            }`}
-                          >
-                            {student.status}
-                          </button>
+                    {filteredStudents.length > 0 ? (
+                      filteredStudents.map((student) => (
+                        <tr key={student.studentId} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-6 py-4">
+                            <span className="font-semibold text-slate-800 block">{student.name}</span>
+                            <span className="text-xs text-slate-400 sm:hidden block mt-0.5">{student.email}</span>
+                          </td>
+                          <td className="px-6 py-4 text-slate-500 font-medium hidden sm:table-cell">
+                            {student.email}
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <button
+                              type="button"
+                              onClick={() => toggleStatus(student.studentId)}
+                              className={`w-24 py-1.5 font-bold text-xs rounded-xl border transition-all shadow-3xs tracking-wide uppercase ${
+                                student.status === "Present"
+                                  ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                                  : "bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100"
+                              }`}
+                            >
+                              {student.status}
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="3" className="text-center py-10 text-sm text-slate-400 font-medium">
+                          No student listings match "{searchTerm}"
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -338,7 +395,7 @@ export default function MarkAttendancePage() {
             <div className="flex justify-end pt-2">
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || students.length === 0}
                 className="px-6 py-3 bg-blue-600 text-white font-bold text-sm rounded-xl hover:bg-blue-700 disabled:opacity-60 transition-colors shadow-md"
               >
                 {submitting ? "Commit logs..." : "Submit Registry Logs"}

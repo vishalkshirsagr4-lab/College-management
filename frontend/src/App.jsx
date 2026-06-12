@@ -36,6 +36,19 @@ const AdminExamManager = lazy(() => import("./pages/admin/ExamAdmin"));
 const AdminNotification = lazy(() => import("./pages/admin/AdminNotificationManagementPage"));
 const FacultyProfile = lazy(()=> import("./pages/faculty/FacultyProfilePage"));
 const FaculyStudents = lazy(()=> import("./pages/faculty/FacultyStudentsPage"));
+const FacultyAttendence = lazy(()=> import("./pages/faculty/Attendence"));
+const FacultyAssignment = lazy(()=> import("./pages/faculty/FacultyAssignment"));
+const FacultyExam = lazy(()=> import('./pages/faculty/FacultyExamPage'));
+const FacultyTimeTable = lazy(()=> import("./pages/faculty/FacultyTimetablePage"));
+const FacultyNotification = lazy(()=> import("./pages/faculty/FacultyNotificationPage"));
+const FacultyreadNotification = lazy(()=> import("./pages/faculty/FacultyNotificationFeed"));
+const StudentAttendence = lazy(()=> import("./pages/student/Attendence"));
+const StudentTimeTable = lazy(()=> import("./pages/student/StudentTimetablePage"));
+const StudentProfile = lazy(()=> import("./pages/student/StudentProfilePage"));
+const StudentExam = lazy(()=> import("./pages/student/Exam"));
+const StudentExams = lazy(()=> import("./pages/student/StudentExams"));
+const StudentResult = lazy(()=> import("./pages/student/StudentResultsPage"));  
+const StudentNotification = lazy(()=> import("./pages/student/Notifications"));
 
 /* ================= HELPERS ================= */
 
@@ -104,24 +117,31 @@ function AppRoutes() {
           <Route element={<RequireAuth role={ROLES.FACULTY} />}>
             <Route path="/faculty" element={<FacultyDashboard />} />
             <Route path="/faculty/subjects" element={<Placeholder title="My Subjects" />} />
-            <Route path="/faculty/attendance" element={<Placeholder title="Attendance" />} />
-            <Route path="/faculty/assignments" element={<Placeholder title="Assignments" />} />
-            <Route path="/faculty/marks" element={<Placeholder title="Marks Entry" />} />
+            <Route path="/faculty/attendance" element={<FacultyAttendence/>} />
+            <Route path="/faculty/assignments" element={<FacultyAssignment/>} />
+            <Route path="/faculty/marks" element={<FacultyExam/>} />
             <Route path="/faculty/exams-syllabus" element={<Placeholder title="Exams + Syllabus" />} />
             <Route path="/faculty/notifications" element={<Placeholder title="Notifications" />} />
-            <Route path="/profile" element={<FacultyProfile/>} />
+            <Route path="/faculty/profile" element={<FacultyProfile/>} />
             <Route path="/faculty/students" element={ <FaculyStudents/> } />
+            <Route path="/faculty/Timetable" element={ <FacultyTimeTable/> } />
+            <Route path="/faculty/Notification" element={ <FacultyNotification/> } />
+            <Route path="/faculty/Notification/Feed" element = { <FacultyreadNotification/> } />
           </Route>
 
           {/* STUDENT */}
           <Route element={<RequireAuth role={ROLES.STUDENT} />}>
             <Route path="/student" element={<StudentDashboard />} />
-            <Route path="/student/attendance" element={<Placeholder title="Attendance" />} />
+            <Route path="/student/attendance" element={<StudentAttendence/>} />
             <Route path="/student/assignments" element={<Placeholder title="Assignments" />} />
-            <Route path="/student/timetable" element={<Placeholder title="Timetable" />} />
-            <Route path="/student/exams" element={<Placeholder title="Exams Schedule" />} />
-            <Route path="/student/results" element={<Placeholder title="Results" />} />
-            <Route path="/student/notifications" element={<Placeholder title="Notifications" />} />
+            <Route path="/student/exams" element={<StudentExams />} />
+            <Route path="/student/exams/:examId" element={<StudentExam />} />
+            <Route path="/student/exams/:examId/result" element={<StudentResult />} />
+            <Route path="/student/results" element={<StudentResult />} />
+            <Route path="/student/notifications" element={<StudentNotification />} />
+            <Route path="/student/Timetable" element={ <StudentTimeTable/> } />
+            <Route path="/student/profile" element= { <StudentProfile/> } />
+        
           </Route>
           <Route path="*" element={<NotFound />} />
         </Route>

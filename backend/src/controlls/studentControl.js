@@ -6,8 +6,9 @@ const Timetable = require("../models/timetable");
 
 const getAllExams = async (req, res) => {
   try {
+    // FIX: Changed "name" to "examName" to perfectly match your Mongoose Schema
     const exams = await Exam.find()
-      .select("name examDate semester department status")
+      .select("examName examDate semester department status")
       .sort({ examDate: 1 });
 
     res.json({
@@ -24,9 +25,9 @@ const getAllExams = async (req, res) => {
 
 const getExamDetails = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { examId } = req.params;
 
-    const exam = await Exam.findById(id);
+    const exam = await Exam.findById(examId);
 
     if (!exam) {
       return res.status(404).json({
@@ -35,12 +36,19 @@ const getExamDetails = async (req, res) => {
       });
     }
 
-    const subjects = await ExamSubject.find({ examId: id })
-      .populate("facultyId", "department designation");
+    const subjects = await ExamSubject.find({ examId }).populate(
+      "facultyId",
+      "department designation"
+    );
 
     res.json({
       success: true,
       data: {
+        examName: exam.examName,
+        department: exam.department,
+        semester: exam.semester,
+        examDate: exam.examDate,
+        status: exam.status,
         exam,
         subjects,
       },

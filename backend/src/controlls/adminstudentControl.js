@@ -1,13 +1,38 @@
+const mongoose = require("mongoose");
 const User = require("../models/user");
 const Student = require("../models/student");
 const bcrypt = require("bcryptjs");
-const { uploadToS3, deleteFromS3 } = require("../config/s3");
-const fs = require("fs");
+const { deleteFromS3 } = require("../config/s3");
 
 const createStudent = async (req, res) => {
   let createdUser = null;
 
   try {
+    // Strict body validation
+    const required = [
+      "name",
+      "email",
+      "loginID",
+      "password",
+      "department",
+      "semester",
+      "section",
+      "rollNo",
+      "phone",
+      "address",
+      "admissionYear",
+    ];
+
+    for (const key of required) {
+      if (req.body?.[key] === undefined || req.body?.[key] === null || req.body?.[key] === "") {
+        return res.status(400).json({
+          success: false,
+          message: `Missing required field: ${key}`,
+        });
+      }
+    }
+
+    console.log("[createStudent] body keys present:", Object.keys(req.body || {}));
     const {
       name,
       email,
@@ -25,7 +50,7 @@ const createStudent = async (req, res) => {
       bloodGroup,
     } = req.body;
 
-    // Fixed validation bug: check if EITHER email OR loginID is already occupied
+    // Check if EITHER email OR loginID is already occupied
     const existingUser = await User.findOne({ $or: [{ email }, { loginID }] });
     if (existingUser) {
       return res.status(400).json({
@@ -44,15 +69,12 @@ const createStudent = async (req, res) => {
     }
 
     let profileImage = "";
+    let profileKey = "";
 
-    // Upload profile image if provided
+    // Upload profile image metadata if provided by multer-s3
     if (req.file) {
-      const result = await uploadToS3(req.file.path, "student-profiles");
-      profileImage = result.url;
-
-      if (fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
+      profileImage = req.file.location || req.file.url || "";
+      profileKey = req.file.key || "";
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -66,10 +88,24 @@ const createStudent = async (req, res) => {
       role: "student",
     });
 
-    // Create student portal document linked to generated user account
+    const studentUserId = createdUser._id;
+
+    // Prevent duplicate Student portal doc for the same user
+    const existingStudentForUser = await Student.findOne({ userID: studentUserId });
+    if (existingStudentForUser) {
+      // Manual Rollback if hit
+      await User.findByIdAndDelete(studentUserId);
+      return res.status(409).json({
+        success: false,
+        message: "Student portal already exists for this user",
+        studentId: existingStudentForUser._id,
+      });
+    }
+
     const student = await Student.create({
-      userID: createdUser._id,
+      userID: studentUserId,
       profileImage,
+      profileKey,
       department,
       semester,
       section,
@@ -94,16 +130,24 @@ const createStudent = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Create Student Error:", error);
+    console.error("[createStudent] Create Student Error:", error);
 
     // Rollback user entry if collection linkage fails mid-execution
     if (createdUser) {
       await User.findByIdAndDelete(createdUser._id);
     }
 
+    if (error?.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "Duplicate student record detected (unique constraint failed)",
+        details: error.keyValue,
+      });
+    }
+
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: error?.message || "Internal server error",
     });
   }
 };
@@ -112,10 +156,13 @@ const updateStudent = async (req, res) => {
   try {
     const { studentId } = req.params;
 
+    // Defensive programming: Do not allow direct payload updates to mutable systems identifiers blindly
+    const { userID, loginID, rollNo, ...updatableFields } = req.body;
+
     const updatedStudent = await Student.findByIdAndUpdate(
       studentId,
-      req.body,
-      { new: true }
+      { $set: updatableFields },
+      { new: true, runValidators: true }
     );
 
     if (!updatedStudent) {
@@ -150,20 +197,21 @@ const deleteStudent = async (req, res) => {
       });
     }
 
-    // Safely delete profile image from S3 storage if populated
-    if (student.profileImage) {
+    // Clear assets out from AWS S3 storage securely 
+    const targetAssetFile = student.profileKey || student.profileImage;
+    if (targetAssetFile) {
       try {
-        await deleteFromS3(student.profileImage);
+        await deleteFromS3(targetAssetFile);
       } catch (s3Err) {
         console.error("Non-blocking S3 asset clearance error:", s3Err.message);
       }
     }
 
-    // Perform operational data deletions across both connected tables
-    await Student.findByIdAndDelete(studentId);
+    // Perform operational data deletions across both collections
     if (student.userID) {
       await User.findByIdAndDelete(student.userID);
     }
+    await Student.findByIdAndDelete(studentId);
 
     res.status(200).json({
       success: true,
@@ -180,8 +228,12 @@ const deleteStudent = async (req, res) => {
 const resetPassword = async (req, res) => {
   try {
     const { userId, newPassword } = req.body;
-    const user = await User.findById(userId);
+    
+    if (!userId || !newPassword) {
+      return res.status(400).json({ success: false, message: "Missing required properties" });
+    }
 
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -270,21 +322,20 @@ const updateStudentProfileImage = async (req, res) => {
       });
     }
 
-    if (student.profileImage) {
+    // Delete previous asset tracking info out of bucket store
+    const previousAsset = student.profileKey || student.profileImage;
+    if (previousAsset) {
       try {
-        await deleteFromS3(student.profileImage);
+        await deleteFromS3(previousAsset);
       } catch (err) {
         console.error("S3 clear warning:", err.message);
       }
     }
 
-    const result = await uploadToS3(req.file.path, "student-profiles");
-    student.profileImage = result.url;
+    // Save configuration references securely
+    student.profileImage = req.file.location || req.file.url || "";
+    student.profileKey = req.file.key || "";
     await student.save();
-
-    if (fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
 
     res.status(200).json({
       success: true,
@@ -299,12 +350,12 @@ const updateStudentProfileImage = async (req, res) => {
   }
 };
 
-module.exports = { 
-  createStudent, 
-  updateStudent, 
-  deleteStudent, 
-  resetPassword, 
-  getAllStudents, 
-  getStudentById, 
-  updateStudentProfileImage 
+module.exports = {
+  createStudent,
+  updateStudent,
+  deleteStudent,
+  resetPassword,
+  getAllStudents,
+  getStudentById,
+  updateStudentProfileImage,
 };

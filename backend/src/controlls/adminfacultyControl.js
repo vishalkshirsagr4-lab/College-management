@@ -1,8 +1,11 @@
 const User = require("../models/user");
 const Faculty = require("../models/faculty");
 const bcrypt = require("bcryptjs");
-const { uploadToS3, deleteFromS3 } = require("../config/s3"); // Imported deleteFromS3 for image management
-const fs = require("fs");
+const { deleteFromS3 } = require("../config/s3");
+
+// NOTE: This controller uses multer-s3 (no local disk paths like req.file.path).
+// So we must not reference fs.unlinkSync or uploadToS3(req.file.path).
+
 
 const createFaculty = async (req, res) => {
   try {
@@ -13,9 +16,10 @@ const createFaculty = async (req, res) => {
 
     const existingUser = await User.findOne({ $or: [{ email }, { loginID }] });
     if (existingUser) {
-      if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      // multer-s3 does not create local temp files; nothing to unlink.
       return res.status(400).json({ success: false, message: "Faculty already exists" });
     }
+
 
     let parsedAssignments = [];
     if (req.body.teachingAssignments) {
@@ -23,20 +27,23 @@ const createFaculty = async (req, res) => {
         try {
           parsedAssignments = JSON.parse(req.body.teachingAssignments);
         } catch (e) {
-          if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
           return res.status(400).json({ success: false, message: "Invalid teachingAssignments format" });
         }
+
       } else if (Array.isArray(req.body.teachingAssignments)) {
         parsedAssignments = req.body.teachingAssignments;
       }
     }
 
     let profileImage = "";
+    let profileKey = "";
+
+    // multer-s3 stores metadata directly on req.file
     if (req.file) {
-      const result = await uploadToS3(req.file.path, "faculty-profiles");
-      profileImage = result.url;
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      profileImage = req.file.location || req.file.url || "";
+      profileKey = req.file.key || "";
     }
+
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({
@@ -63,9 +70,10 @@ const createFaculty = async (req, res) => {
 
     res.status(201).json({ success: true, message: "Faculty created successfully", data: { user, faculty } });
   } catch (error) {
-    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    // multer-s3 does not create local temp files; nothing to unlink.
     res.status(500).json({ success: false, message: error.message });
   }
+
 };
 
 // NEW: Core Profile Update Function (Handles Name, Email, Phone, Dept, Designation)
@@ -368,17 +376,20 @@ const updateFacultyProfileImage = async (req, res) => {
       }
     }
 
-    const result = await uploadToS3(req.file.path, "faculty-profiles");
-    faculty.profileImage = result.url;
-    await faculty.save();
+    // multer-s3 attaches { location, key } directly on req.file
+    const profileImage = req.file.location || req.file.url || "";
+    const profileKey = req.file.key || "";
 
-    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    faculty.profileImage = profileImage;
+    faculty.profileKey = faculty.profileKey || profileKey;
+    await faculty.save();
 
     res.status(200).json({
       success: true,
       message: "Profile image updated successfully",
       profileImage: faculty.profileImage,
     });
+
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -423,13 +434,21 @@ const deleteFaculty = async (req, res) => {
       await User.findByIdAndDelete(faculty.userID);
     }
 
-    if (faculty.profileImage) {
+    if (faculty.profileKey) {
+      try {
+        await deleteFromS3(faculty.profileKey);
+      } catch (s3Err) {
+        console.error("S3 asset removal skipped:", s3Err.message);
+      }
+    } else if (faculty.profileImage) {
+      // fallback for old data
       try {
         await deleteFromS3(faculty.profileImage);
       } catch (s3Err) {
         console.error("S3 asset removal skipped:", s3Err.message);
       }
     }
+
 
     await Faculty.findByIdAndDelete(facultyId);
 

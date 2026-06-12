@@ -15,7 +15,13 @@ const {
 
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
-const upload = require("../middleware/upload");
+const { upload } = require("../middleware/upload");
+
+// Runtime debugging to verify multer middleware shape.
+// Remove/disable these logs after confirming correct behavior.
+console.log("[adminRoute] typeof upload:", typeof upload);
+console.log("[adminRoute] upload keys (if any):", upload && typeof upload === "function" ? Object.keys(upload) : upload);
+
 
 // --- FACULTY MANAGEMENT ROUTES ---
 router.put("/faculty/profile-image", authMiddleware, roleMiddleware("admin"), upload.single("profileImage"), updateFacultyProfileImage);

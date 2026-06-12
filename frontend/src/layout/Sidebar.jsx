@@ -51,6 +51,8 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
         { to: "/faculty/attendance", label: "Attendance", icon: "✅" },
         { to: "/faculty/assignments", label: "Assignments", icon: "📝" },
         { to: "/faculty/marks", label: "Marks", icon: "🧾" },
+        { to: "/faculty/Timetable", label: "Time Table", icon: "📅"} ,
+        { to: "/faculty/Notification", label: "Notification" , icon: "🔔"}
       ];
     }
 
@@ -58,6 +60,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
       { to: "/student", label: "Dashboard", icon: "🎒" },
       { to: "/student/attendance", label: "Attendance", icon: "📊" },
       { to: "/student/exams", label: "Exams", icon: "🗓️" },
+      { to: "/student/Timetable", label:"Time Table", icon: "📅"},
       { to: "/student/results", label: "Results", icon: "🏆" },
     ];
   }, [role]);
