@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../../utils/api';
 
 const NotificationDashboard = () => {
   const [notifications, setNotifications] = useState([]);
@@ -11,7 +11,8 @@ const NotificationDashboard = () => {
 
   const fetchNotifications = async () => {
     try {
-      const response = await axios.get('/api/notifications/my');
+      const response = await api.get('/api/notification/my');
+
       // Ensure we set an empty array if data is missing
       setNotifications(response.data.data || []);
     } catch (err) {
@@ -23,7 +24,8 @@ const NotificationDashboard = () => {
 
   const markAsRead = async (notificationId) => {
     try {
-      await axios.post('/api/notifications/read', { notificationId });
+      await api.post('/api/notification/read', { notificationId });
+
       fetchNotifications();
     } catch (err) {
       console.error("Error marking as read", err);

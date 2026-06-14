@@ -35,7 +35,6 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
         { to: "/admin/students", label: "Students", icon: "🎓" },
         { to: "/admin/faculty", label: "Faculty", icon: "🧑‍🏫" },
 
-        // NEW
         { to: "/admin/subjects", label: "Subjects", icon: "📖" },
 
         { to: "/admin/timetable", label: "Timetable", icon: "🗓️" },
