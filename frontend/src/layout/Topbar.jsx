@@ -1,11 +1,10 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { Bell, LogOut, User, Menu, ChevronDown } from "lucide-react";
 
 export default function Topbar({ onMenu, user }) {
   const { logout } = useAuth();
   const navigate = useNavigate();
-
-  // Standardize the role string to avoid case-sensitivity issues
   const userRole = user?.role?.toLowerCase();
 
   const handleLogout = () => {
@@ -13,87 +12,52 @@ export default function Topbar({ onMenu, user }) {
     navigate("/login", { replace: true });
   };
 
-  // Dynamically resolve profile routes based on AppRoutes configuration
-  const getProfileLink = () => {
-    if (userRole === "admin") return "/admin"; // Or /admin/profile if added later
-    if (userRole === "faculty") return "/faculty/profile";
-    if (userRole === "student") return "/student/profile";
-    return "/login"; // Safe fallback
-  };
-
-  // Dynamically resolve notification links matching your AppRoutes configuration
-  const getNotificationLink = () => {
-    if (userRole === "admin") return "/admin/notifications";
-    if (userRole === "faculty") return "/faculty/Notification/Feed";
-    if (userRole === "student") return "/student/notifications";
-    return "/";
-  };
-
   return (
-    <header className="sticky top-0 z-30 bg-white border-b border-slate-200">
-      <div className="h-14 px-4 flex items-center justify-between">
-
-        {/* Left Side */}
-        <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200">
+      <div className="h-16 px-4 flex items-center justify-between">
+        {/* Left: Mobile Menu & Breadcrumb hint */}
+        <div className="flex items-center gap-4">
           <button
             onClick={onMenu}
-            className="lg:hidden p-2 rounded-md hover:bg-slate-100"
-            aria-label="Open sidebar"
+            className="lg:hidden p-2 rounded-lg hover:bg-slate-100 transition-colors"
           >
-            ☰
+            <Menu className="w-5 h-5 text-slate-600" />
           </button>
-
-          <div className="leading-tight">
-            <div className="text-sm font-semibold text-slate-900">
-              College Management
-            </div>
-            <div className="text-xs text-slate-500 capitalize">
-              {user?.role || "User"} Dashboard
-            </div>
+          
+          <div className="hidden sm:flex flex-col">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Dashboard</span>
+            <span className="text-sm font-semibold text-slate-900 capitalize">{userRole} Portal</span>
           </div>
         </div>
 
-        {/* Right Side */}
-        <div className="flex items-center gap-3">
+        {/* Right: Actions */}
+        <div className="flex items-center gap-2">
+          {/* Notification Button */}
+          <button className="p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 rounded-full transition-all">
+            <Bell className="w-5 h-5" />
+          </button>
 
-          {/* Dynamic Notifications */}
+          {/* Profile Section */}
           <Link
-            to={getNotificationLink()}
-            className="relative p-2 rounded-md hover:bg-slate-100"
-            aria-label="Notifications"
+            to={userRole === "admin" ? "/admin" : `/${userRole}/profile`}
+            className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full hover:bg-slate-100 transition-colors"
           >
-            🔔
-            <span className="absolute -top-1 -right-1 w-4 h-4 text-[10px] text-white rounded-full flex items-center justify-center">
-              {/* Optional dynamic notification count */}
+            <div className="w-8 h-8 flex items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm">
+              {user?.name?.charAt(0).toUpperCase() || <User className="w-4 h-4" />}
+            </div>
+            <span className="hidden md:block text-sm font-medium text-slate-700">
+              {user?.name || "My Profile"}
             </span>
           </Link>
 
-          {/* Dynamic Profile Link */}
-          {user?.role && (
-            <Link
-              to={getProfileLink()}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-slate-100"
-            >
-              <span className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-100 text-slate-700 font-bold uppercase text-xs">
-                {user?.name?.charAt(0) || "👤"}
-              </span>
-
-              <span className="hidden sm:inline text-sm text-slate-700 font-medium">
-                {user?.name || "User"}
-              </span>
-            </Link>
-          )}
-
-          {/* Logout */}
+          {/* Logout Button */}
           <button
-            type="button"
             onClick={handleLogout}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-slate-100 text-sm font-medium text-slate-700 hover:text-rose-600 transition-colors"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
           >
-            <span aria-hidden>🚪</span>
+            <LogOut className="w-4 h-4" />
             <span className="hidden sm:inline">Logout</span>
           </button>
-
         </div>
       </div>
     </header>

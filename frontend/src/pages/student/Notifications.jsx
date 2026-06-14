@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../utils/api';
+import { toast } from 'react-toastify';
 
 const NotificationDashboard = () => {
   const [notifications, setNotifications] = useState([]);
@@ -16,7 +17,8 @@ const NotificationDashboard = () => {
       // Ensure we set an empty array if data is missing
       setNotifications(response.data.data || []);
     } catch (err) {
-      console.error("Error fetching notifications", err);
+      const msg = err?.response?.data?.message || "Failed to fetch notifications.";
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -25,10 +27,11 @@ const NotificationDashboard = () => {
   const markAsRead = async (notificationId) => {
     try {
       await api.post('/api/notification/read', { notificationId });
-
+      toast.success('Marked as read');
       fetchNotifications();
     } catch (err) {
-      console.error("Error marking as read", err);
+      const msg = err?.response?.data?.message || "Failed to mark as read.";
+      toast.error(msg);
     }
   };
 
@@ -41,7 +44,9 @@ const NotificationDashboard = () => {
   return (
     <div className="max-w-2xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-6">My Notifications</h1>
-      <div className="space-y-4">
+
+      <div className="space-y-4" role="list">
+
         {/* Use optional chaining to prevent map errors */}
         {notifications?.length > 0 ? (
           notifications.map((n) => {

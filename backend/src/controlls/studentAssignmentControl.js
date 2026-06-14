@@ -18,7 +18,7 @@ const getMyAssignments = async (req, res) => {
       section: student.section,
     })
       .sort({ dueDate: 1, createdAt: -1 })
-      .select("title description subject dueDate");
+      .select("title description subject dueDate fileUrl");
 
     return res.status(200).json({
       success: true,

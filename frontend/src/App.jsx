@@ -49,6 +49,7 @@ const StudentExam = lazy(()=> import("./pages/student/Exam"));
 const StudentExams = lazy(()=> import("./pages/student/StudentExams"));
 const StudentResult = lazy(()=> import("./pages/student/StudentResultsPage"));  
 const StudentNotification = lazy(()=> import("./pages/student/Notifications"));
+const StudentAssignment = lazy(()=> import("./pages/student/Assignment"));
 
 /* ================= HELPERS ================= */
 
@@ -141,7 +142,7 @@ function AppRoutes() {
             <Route path="/student/notifications" element={<StudentNotification />} />
             <Route path="/student/Timetable" element={ <StudentTimeTable/> } />
             <Route path="/student/profile" element= { <StudentProfile/> } />
-        
+            <Route path="/student/assignment" element = { <StudentAssignment/> } />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Route>

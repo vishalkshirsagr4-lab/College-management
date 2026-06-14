@@ -25,7 +25,6 @@ const NavItem = ({ to, label, icon, onClick }) => {
 export default function Sidebar({ mobileOpen, setMobileOpen }) {
   const { user } = useAuth();
   const role = user?.role;
-
   const close = () => setMobileOpen(false);
 
   const items = useMemo(() => {
@@ -34,15 +33,12 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
         { to: "/admin", label: "Dashboard", icon: "🏛️" },
         { to: "/admin/students", label: "Students", icon: "🎓" },
         { to: "/admin/faculty", label: "Faculty", icon: "🧑‍🏫" },
-
         { to: "/admin/subjects", label: "Subjects", icon: "📖" },
-
         { to: "/admin/timetable", label: "Timetable", icon: "🗓️" },
         { to: "/admin/exams", label: "Exams", icon: "🧪" },
         { to: "/admin/notifications", label: "Notifications", icon: "🔔" },
       ];
     }
-
     if (role === ROLES.FACULTY) {
       return [
         { to: "/faculty", label: "Dashboard", icon: "📚" },
@@ -50,23 +46,22 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
         { to: "/faculty/attendance", label: "Attendance", icon: "✅" },
         { to: "/faculty/assignments", label: "Assignments", icon: "📝" },
         { to: "/faculty/marks", label: "Marks", icon: "🧾" },
-        { to: "/faculty/Timetable", label: "Time Table", icon: "📅"} ,
-        { to: "/faculty/Notification", label: "Notification" , icon: "🔔"}
+        { to: "/faculty/Timetable", label: "Time Table", icon: "📅" },
+        { to: "/faculty/Notification", label: "Notification", icon: "🔔" },
       ];
     }
-
     return [
       { to: "/student", label: "Dashboard", icon: "🎒" },
       { to: "/student/attendance", label: "Attendance", icon: "📊" },
+      { to: "/student/assignment", label: "Assignment", icon: "📝" },
       { to: "/student/exams", label: "Exams", icon: "🗓️" },
-      { to: "/student/Timetable", label:"Time Table", icon: "📅"},
+      { to: "/student/Timetable", label: "Time Table", icon: "📅" },
       { to: "/student/results", label: "Results", icon: "🏆" },
     ];
   }, [role]);
 
   return (
     <>
-      {/* overlay */}
       {mobileOpen && (
         <div
           className="fixed inset-0 bg-black/30 z-30 lg:hidden"
@@ -74,32 +69,31 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
         />
       )}
 
-      {/* sidebar */}
+      {/* 1. Added 'h-screen' to lock to viewport height.
+        2. Added 'flex flex-col' to manage children vertically.
+      */}
       <aside
-        className={[
-          "fixed inset-y-0 left-0 z-40 w-72 bg-white",
-          "border-r border-slate-200",
-          "transform transition-transform duration-200",
-          mobileOpen ? "translate-x-0" : "-translate-x-full",
-          "lg:translate-x-0 lg:static",
-        ].join(" ")}
+        className={`fixed inset-y-0 left-0 z-40 w-72 bg-white border-r border-slate-200 
+        transform transition-transform duration-200 flex flex-col h-screen
+        ${mobileOpen ? "translate-x-0" : "-translate-x-full"} 
+        lg:translate-x-0 lg:static lg:h-screen`}
       >
-        {/* header */}
-        <div className="h-16 flex items-center px-4 border-b border-slate-200">
-          <Link to="/" className="font-semibold text-slate-900">
+        {/* Header - Fixed height */}
+        <div className="h-16 flex items-center px-4 border-b border-slate-200 flex-none">
+          <Link to="/" className="font-semibold text-slate-900" onClick={close}>
             🎓 College ERP
           </Link>
         </div>
 
-        {/* nav */}
-        <nav className="p-3 space-y-1">
+        {/* Nav - Scrollable area if content exceeds screen */}
+        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
           {items.map((item) => (
             <NavItem key={item.to} {...item} onClick={close} />
           ))}
         </nav>
 
-        {/* profile */}
-        <div className="absolute bottom-0 w-full p-3 border-t border-slate-200">
+        {/* Profile - Footer area, not absolute anymore to prevent overflow */}
+        <div className="p-3 border-t border-slate-200 flex-none">
           <Link
             to="/profile"
             onClick={close}

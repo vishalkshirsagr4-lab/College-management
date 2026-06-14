@@ -1,6 +1,6 @@
-
 import { useState, useEffect } from "react";
 import api from "../../utils/api";
+import { toast } from "react-toastify";
 
 export default function FacultyManagement() {
   const [faculty, setFaculty] = useState([]);
@@ -8,9 +8,23 @@ export default function FacultyManagement() {
 
   useEffect(() => {
     // Fetch from your getAllFaculty controller
-    api.get("/api/faculty").then((res) => setFaculty(res.data.faculty));
-    setLoading(false);
+    const run = async () => {
+      try {
+        const res = await api.get("/api/faculty");
+        setFaculty(res.data.faculty || []);
+        toast.success("Faculty list loaded");
+      } catch (e) {
+        const msg = e?.response?.data?.message || "Failed to load faculty.";
+        toast.error(msg);
+        setFaculty([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    run();
   }, []);
+
 
   return (
     <div className="p-6 md:p-10 bg-neutral-50 min-h-screen">

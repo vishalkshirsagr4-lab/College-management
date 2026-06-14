@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
+import { toast } from "react-toastify";
 
 function Field({ label, children }) {
   return (
@@ -180,7 +181,9 @@ export default function CreateFacultyPage() {
         const fetchedData = res.data?.subjects || res.data || [];
         setSubjects(fetchedData);
       } catch (e) {
-        setSubjectsError(e?.response?.data?.message || "Failed to fetch subjects.");
+        const msg = e?.response?.data?.message || "Failed to fetch subjects.";
+        setSubjectsError(msg);
+        toast.error(msg);
         setSubjects([]);
       } finally {
         setLoadingSubjects(false);
@@ -405,18 +408,21 @@ export default function CreateFacultyPage() {
       } else {
         await api.post("/api/admin/faculty", payload);
       }
-
+      toast.success("Faculty created successfully");
       navigate("/admin/faculty");
     } catch (e) {
-      setFormError(e?.response?.data?.message || "Failed to create faculty.");
+      const msg = e?.response?.data?.message || "Failed to create faculty.";
+      setFormError(msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="bg-slate-50">
       <div className="mx-auto max-w-7xl p-4 md:p-6">
+
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">Create Faculty</h1>
