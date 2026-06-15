@@ -16,6 +16,8 @@ import { ROLES } from "./utils/roles";
 
 /* ================= LAZY PAGES ================= */
 
+
+
 const Login = lazy(() => import("./pages/auth/Login"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const FacultyDashboard = lazy(() => import("./pages/faculty/FacultyDashboard"));
@@ -31,7 +33,6 @@ const CreateStudentPage = lazy(() => import("./pages/admin/CreateStudent"));
 const StudentDetailsPage = lazy(() => import("./pages/admin/StudentDetails"));
 const TimetablePage = lazy(() => import("./pages/admin/TimetableManagementPage"));
 
-// Integrated new component
 const AdminExamManager = lazy(() => import("./pages/admin/ExamAdmin"));
 const AdminNotification = lazy(() => import("./pages/admin/AdminNotificationManagementPage"));
 const FacultyProfile = lazy(()=> import("./pages/faculty/FacultyProfilePage"));
@@ -64,15 +65,17 @@ const Placeholder = ({ title }) => (
 
 const NotFound = () => <div className="p-6 text-sm">404 - Page not found</div>;
 
-/* ================= ROLE REDIRECT ================= */
+/* ================= ROLE REDIRECTOR ================= */
 
+// This now safely maps users to their internal panels if they have a token
 function RoleRedirector() {
   const { isAuthenticated, role } = useAuth();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  
+  if (!isAuthenticated) return <Navigate to="/" replace />; // Fallback to public landing
   if (role === ROLES.ADMIN) return <Navigate to="/admin" replace />;
   if (role === ROLES.FACULTY) return <Navigate to="/faculty" replace />;
   if (role === ROLES.STUDENT) return <Navigate to="/student" replace />;
-  return <Navigate to="/login" replace />;
+  return <Navigate to="/" replace />;
 }
 
 /* ================= ROUTES ================= */
@@ -87,7 +90,10 @@ function AppRoutes() {
       }
     >
       <Routes>
-        <Route path="/" element={<RoleRedirector />} />
+    
+        
+        {/* AUTH INTERCEPT REDIRECT POINT */}
+        <Route path="/explore-gateway" element={<RoleRedirector />} />
         <Route path="/login" element={<Login />} />
 
         <Route element={<AppLayout />}>
@@ -101,14 +107,8 @@ function AppRoutes() {
             <Route path="/admin/faculty/:facultyId" element={<FacultyDetailsPage />} />
             <Route path="/admin/faculty/:facultyId/edit-subjects" element={<EditFacultySubjectsPage />} />
             <Route path="/admin/assign-faculty" element={<Placeholder title="Assign Faculty" />} />
-            
-            {/* Added Route */}
             <Route path="/admin/exams" element={<AdminExamManager />} />
-            
-            <Route
-              path="/admin/notifications"
-              element={<AdminNotification />}
-            />
+            <Route path="/admin/notifications" element={<AdminNotification />} />
             <Route path="/admin/student/create" element={<CreateStudentPage />} />
             <Route path="/admin/students/:studentId" element={<StudentDetailsPage />} />
             <Route path="/admin/timetable" element={<TimetablePage />} />
@@ -144,6 +144,7 @@ function AppRoutes() {
             <Route path="/student/profile" element= { <StudentProfile/> } />
             <Route path="/student/assignment" element = { <StudentAssignment/> } />
           </Route>
+          
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
@@ -157,7 +158,15 @@ export default function App() {
       <BrowserRouter>
         <AppStartupAnimation>
           <AppRoutes />
-          <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
+          <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            newestOnTop
+            closeOnClick
+            pauseOnHover
+            draggable
+            theme="colored"
+          />
         </AppStartupAnimation>
       </BrowserRouter>
     </AuthProvider>

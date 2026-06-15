@@ -71,27 +71,40 @@ export default function AdminDashboard() {
           ))}
         </section>
 
-        {/* Analytics Section */}
-        <section className="bg-white p-8 rounded-3xl border border-neutral-200 shadow-sm">
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h2 className="text-xl font-bold text-neutral-900">Analytics</h2>
-              <p className="text-sm text-neutral-500">Last 30 days of platform activity</p>
-            </div>
-            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-50 text-primary-700 border border-primary-100 text-xs font-semibold">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-500"></span>
-              </span>
-              LIVE DATA
-            </div>
-          </div>
-          <div className="h-72 w-full">
-            <Suspense fallback={<div className="h-full flex items-center justify-center text-neutral-400">Loading chart...</div>}>
-              <AnalyticsChart />
-            </Suspense>
-          </div>
-        </section>
+{/* Analytics Section */}
+<section className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+  <div className="flex justify-between items-center mb-8">
+    <div>
+      <h2 className="text-xl font-bold text-slate-900">
+        Analytics
+      </h2>
+
+      <p className="text-sm text-slate-500">
+        Last 30 days of platform activity
+      </p>
+    </div>
+
+    <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100 text-xs font-semibold">
+      <span className="relative flex h-2 w-2">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+      </span>
+      LIVE DATA
+    </div>
+  </div>
+
+  <div className="w-full overflow-x-auto">
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-20 text-slate-400 text-sm">
+          Loading chart...
+        </div>
+      }
+    >
+      <AnalyticsChart />
+    </Suspense>
+  </div>
+</section>
 
       </div>
     </div>

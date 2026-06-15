@@ -3,83 +3,62 @@ import { useParams, Link } from "react-router-dom";
 import api from "../../utils/api";
 
 export default function StudentResultsPage() {
-  const { examId } = useParams(); // optional depending on route definition
+  const { examId } = useParams();
+
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchExamResult = async (targetExamId) => {
-      try {
-        setLoading(true);
-        setError("");
+  const fetchResult = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-        // Backend route: GET /api/student/exams/:examId/result
-        const res = await api.get(
-          `/api/student/exams/${targetExamId}/result`
-        );
+      const examsRes = await api.get("/api/student/exams");
 
-        if (res.data?.success) {
-          setResult(res.data.data);
-        } else {
-          setResult(null);
-        }
-      } catch (err) {
-        console.error("Error fetching exam results:", err);
-        // Captures backend messages like "Result not published yet" or "Student not found"
-        setError(
-          err.response?.data?.message ||
-            "Failed to load academic transcript data."
-        );
-        setResult(null);
-      } finally {
-        setLoading(false);
-      }
-    };
+      const exams = examsRes.data?.data || [];
 
-    const bootstrap = async () => {
-      // Current App.jsx route is: /student/results (no :examId)
-      // so examId may be undefined. In that case, fetch exams and use the first available.
-      if (examId) {
-        await fetchExamResult(examId);
+      const completedExam = exams.find(
+        (exam) => exam.status === "completed"
+      );
+
+      if (!completedExam) {
+        setError("No completed exam found.");
         return;
       }
 
-      try {
-        setLoading(true);
-        setError("");
+      const resultRes = await api.get(
+        `/api/student/exams/${completedExam._id}/result`
+      );
 
-        const examsRes = await api.get("/api/student/exams");
-        const exams = examsRes.data?.data || [];
-
-        if (!exams.length) {
-          setError("No exams found for your account.");
-          setResult(null);
-          return;
-        }
-
-        // Prefer examId from current selection; otherwise first exam in list.
-        await fetchExamResult(exams[0]._id);
-      } catch (err) {
-        console.error("Error fetching exams for results:", err);
-        setError(
-          err.response?.data?.message ||
-            "Failed to load your exams to show results."
-        );
-        setResult(null);
-        setLoading(false);
+      if (resultRes.data?.success) {
+        setResult(resultRes.data.data);
+      } else {
+        setError("Result not available.");
       }
-    };
+    } catch (err) {
+      console.error(err);
 
-    bootstrap();
-  }, [examId]);
+      setError(
+        err.response?.data?.message ||
+        "Failed to load result."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  fetchResult();
+}, []);
   if (loading) {
     return (
-      <div className="w-full h-96 flex items-center justify-center p-6">
+      <div className="flex items-center justify-center h-[70vh]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3"></div>
-          <p className="text-xs text-slate-400 font-bold tracking-wider uppercase">Fetching Performance Data...</p>
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-3 text-sm font-semibold text-slate-500">
+            FETCHING PERFORMANCE DATA...
+          </p>
         </div>
       </div>
     );
@@ -87,139 +66,210 @@ export default function StudentResultsPage() {
 
   if (error) {
     return (
-      <div className="w-full p-6 flex items-center justify-center">
-        <div className="bg-white max-w-md w-full border border-slate-200 rounded-2xl p-6 text-center shadow-sm">
-          <div className="text-3xl mb-2">📜</div>
-          <h3 className="text-base font-bold text-slate-900">Result Status</h3>
-          <p className="text-slate-500 text-xs mt-2 font-medium bg-slate-50 p-3 rounded-xl border border-slate-100">
-            {error}
-          </p>
+      <div className="flex items-center justify-center h-[70vh] p-4">
+        <div className="bg-white border rounded-2xl p-6 shadow max-w-md w-full text-center">
+          <h2 className="text-lg font-bold text-red-600 mb-2">
+            Result Status
+          </h2>
+
+          <p className="text-slate-600 mb-4">{error}</p>
+
           <Link
             to="/student/exams"
-            className="mt-4 inline-block text-xs font-semibold text-blue-600 hover:underline"
+            className="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg"
           >
-            ← Back to Exams Schedule
+            Back To Exams
           </Link>
         </div>
       </div>
     );
   }
 
-  const isPassed = result?.resultStatus === "PASS";
+  if (!result) {
+    return (
+      <div className="flex items-center justify-center h-[70vh]">
+        <p>No result data available.</p>
+      </div>
+    );
+  }
 
-  return (
-    <div className="w-full p-4 lg:p-6 font-sans text-slate-700 antialiased box-border">
-      <div className="max-w-4xl mx-auto space-y-6">
-        
-        {/* Navigation Breadcrumb */}
-        <div className="text-xs text-slate-400 font-medium">
-          <Link to="/student" className="hover:text-slate-600">Dashboard</Link>
-          <span className="mx-2">/</span>
-          <Link to="/student/exams" className="hover:text-slate-600">Exams</Link>
-          <span className="mx-2">/</span>
-          <span className="text-slate-600 font-semibold">Report Card</span>
-        </div>
+  const isPassed = result.resultStatus === "PASS";
 
-        {/* Performance Overview Summary Card */}
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-          <div className="p-6 flex flex-col md:flex-row items-center justify-between gap-6 bg-gradient-to-b from-slate-50/50 to-white border-b border-slate-100">
-            <div>
-              <span className="text-[10px] font-black text-blue-600 uppercase tracking-wider block">
-                Academic Transcript
-              </span>
-              <h1 className="text-xl font-bold text-slate-900 tracking-tight mt-0.5">
-                Examination Performance Report
-              </h1>
-              <p className="text-xs text-slate-400 font-mono mt-1">
-                Exam Node ID: {result?.examId}
-              </p>
-            </div>
+ 
 
-            {/* Dynamic Pass / Fail Badge */}
-            <div className="text-center shrink-0">
-              <span className={`text-xs font-black tracking-widest uppercase px-4 py-1.5 rounded-full border ${
-                isPassed 
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm shadow-emerald-50" 
-                  : "bg-rose-50 text-rose-700 border-rose-200 shadow-sm shadow-rose-50"
-              }`}>
-                {result?.resultStatus}
-              </span>
-            </div>
+jsx
+return (
+  <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 p-4 md:p-6">
+    <div className="max-w-6xl mx-auto">
+
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-cyan-500 rounded-3xl shadow-xl text-white p-8 mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <div>
+            <p className="uppercase tracking-widest text-xs font-bold opacity-90">
+              Academic Report
+            </p>
+
+            <h1 className="text-3xl md:text-4xl font-extrabold mt-1">
+              Examination Result
+            </h1>
+
+            <p className="mt-2 text-blue-100 text-sm">
+              Exam ID: {result.examId}
+            </p>
           </div>
 
-          {/* Core Analytics Summary Strip */}
-          <div className="grid grid-cols-3 divide-x divide-slate-100 bg-slate-50/30 text-center py-4">
-            <div>
-              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Marks Obtained</span>
-              <span className="text-lg font-bold text-slate-800 mt-0.5 block">
-                {result?.totalObtained} <span className="text-xs text-slate-400 font-normal">/ {result?.totalMax}</span>
-              </span>
-            </div>
-            <div>
-              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Aggregate Weight</span>
-              <span className="text-lg font-bold text-indigo-600 mt-0.5 block">
-                {result?.percentage}%
-              </span>
-            </div>
-            <div>
-              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Evaluation Outcome</span>
-              <span className={`text-xs font-bold mt-1.5 inline-block ${isPassed ? "text-emerald-600" : "text-rose-600"}`}>
-                {isPassed ? "🎯 Requirements Met" : "⚠️ Academic Probation"}
-              </span>
-            </div>
+          <div>
+            <span
+              className={`px-6 py-3 rounded-full text-sm font-bold shadow-lg ${
+                isPassed
+                  ? "bg-white text-green-600"
+                  : "bg-white text-red-600"
+              }`}
+            >
+              {result.resultStatus}
+            </span>
           </div>
         </div>
+      </div>
 
-        {/* Subject-wise Marks Breakdown Table Table Component */}
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-          <div className="p-4 bg-slate-50 border-b border-slate-100">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-              📚 Course Module Grade Matrix
-            </h3>
-          </div>
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/30 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  <th className="py-3 px-5">Course / Subject Module</th>
-                  <th className="py-3 px-5 text-center">Marks Secured</th>
-                  <th className="py-3 px-5 text-center">Maximum Structural Marks</th>
-                  <th className="py-3 px-5 text-right">Proportional Standing</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs font-medium">
-                {result?.subjectWise?.map((row, idx) => {
-                  const itemPercentage = ((row.marksObtained / row.totalMarks) * 100).toFixed(1);
-                  return (
-                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="py-3.5 px-5 font-bold text-slate-800 uppercase tracking-wide">
-                        📖 {row.subject}
-                      </td>
-                      <td className="py-3.5 px-5 text-center font-bold text-slate-900">
-                        {row.marksObtained}
-                      </td>
-                      <td className="py-3.5 px-5 text-center text-slate-400 font-semibold">
-                        {row.totalMarks}
-                      </td>
-                      <td className="py-3.5 px-5 text-right">
-                        <span className={`inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-md ${
-                          parseFloat(itemPercentage) >= 35 
-                            ? "bg-slate-100 text-slate-700" 
-                            : "bg-rose-50 text-rose-600 border border-rose-100"
-                        }`}>
-                          {itemPercentage}%
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+        <div className="bg-white rounded-3xl p-6 shadow-lg">
+          <p className="text-sm text-slate-500">
+            Total Marks
+          </p>
+
+          <h2 className="text-3xl font-extrabold mt-2 text-slate-800">
+            {result.totalObtained}
+            <span className="text-lg text-slate-400">
+              /{result.totalMax}
+            </span>
+          </h2>
+        </div>
+
+        <div className="bg-white rounded-3xl p-6 shadow-lg">
+          <p className="text-sm text-slate-500">
+            Percentage
+          </p>
+
+          <h2 className="text-3xl font-extrabold mt-2 text-blue-600">
+            {result.percentage}%
+          </h2>
+        </div>
+
+        <div className="bg-white rounded-3xl p-6 shadow-lg">
+          <p className="text-sm text-slate-500">
+            Final Status
+          </p>
+
+          <h2
+            className={`text-3xl font-extrabold mt-2 ${
+              isPassed
+                ? "text-green-600"
+                : "text-red-600"
+            }`}
+          >
+            {result.resultStatus}
+          </h2>
         </div>
 
       </div>
+
+      {/* Subject Table */}
+      <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
+
+        <div className="p-5 border-b">
+          <h2 className="font-bold text-lg text-slate-800">
+            Subject-wise Performance
+          </h2>
+        </div>
+
+        <div className="overflow-x-auto">
+
+          <table className="w-full">
+
+            <thead>
+              <tr className="bg-slate-100 text-slate-700">
+                <th className="text-left p-4">
+                  Subject
+                </th>
+
+                <th className="text-center p-4">
+                  Obtained
+                </th>
+
+                <th className="text-center p-4">
+                  Total
+                </th>
+
+                <th className="text-center p-4">
+                  Percentage
+                </th>
+              </tr>
+            </thead>
+
+            <tbody>
+
+              {result.subjectWise?.map((subject, index) => {
+                const percent = (
+                  (subject.marksObtained /
+                    subject.totalMarks) *
+                  100
+                ).toFixed(2);
+
+                return (
+                  <tr
+                    key={index}
+                    className="border-b hover:bg-blue-50 transition-colors"
+                  >
+                    <td className="p-4 font-medium">
+                      {subject.subject}
+                    </td>
+
+                    <td className="p-4 text-center font-bold">
+                      {subject.marksObtained}
+                    </td>
+
+                    <td className="p-4 text-center">
+                      {subject.totalMarks}
+                    </td>
+
+                    <td className="p-4 text-center">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-bold ${
+                          percent >= 35
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {percent}%
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+      <div className="mt-6">
+        <Link
+          to="/student/exams"
+          className="inline-flex items-center px-5 py-3 rounded-2xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+        >
+          ← Back To Exams
+        </Link>
+      </div>
+
     </div>
-  );
-}
+  </div>
+);
+
+} 

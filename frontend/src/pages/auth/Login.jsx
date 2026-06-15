@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { toast } from "react-toastify";
+import { notify } from "../../utils/toast";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import { api } from "../../utils/api";
@@ -19,36 +19,50 @@ export default function Login() {
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      const res = await api.post("/api/auth/login", {
-        loginID,
-        password,
-      });
+  try {
+    const res = await api.post("/api/auth/login", {
+      loginID,
+      password,
+    });
 
-      const data = res.data;
+    const data = res.data;
 
-      // Adjust according to your backend response
-      login({
-        token: data.token,
-        user: data.user,
-      });
+    // Save auth data
+    login({
+      token: data.token,
+      user: data.user,
+    });
 
-      toast.success("Welcome back 👋");
+    notify.success("Welcome back 👋");
 
-      navigate(from, { replace: true });
-    } catch (err) {
-      console.error(err?.response?.data);
+    console.log("Login Response:", data);
+    console.log("User Role:", data?.user?.role);
 
-      toast.error(
-        err?.response?.data?.message || "Invalid Login ID or Password"
-      );
-    } finally {
-      setLoading(false);
+    const role = data?.user?.role;
+
+    // Redirect based on role
+    if (role === "admin" || role === "ADMIN") {
+      navigate("/admin", { replace: true });
+    } else if (role === "faculty" || role === "FACULTY") {
+      navigate("/faculty", { replace: true });
+    } else if (role === "student" || role === "STUDENT") {
+      navigate("/student", { replace: true });
+    } else {
+      // fallback
+      navigate("/explore-gateway", { replace: true });
     }
-  };
+  } catch (err) {
+    console.error(err?.response?.data);
 
+    notify.error(
+      err?.response?.data?.message || "Invalid Login ID or Password"
+    );
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-md">

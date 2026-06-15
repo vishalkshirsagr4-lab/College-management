@@ -4,20 +4,50 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: {
-          50: "#eff6ff", 100: "#dbeafe", 200: "#bfdbfe", 300: "#93c5fd",
-          400: "#60a5fa", 500: "#3b82f6", 600: "#2563eb", 700: "#1d4ed8",
-          800: "#1e40af", 900: "#1e3a8a",
+        brand: {
+          50: "#eff6ff",
+          100: "#dbeafe",
+          200: "#bfdbfe",
+          500: "#106EBE", // Your primary Blue
+          600: "#0d599a",
+          700: "#0a4374",
+          // --- NEW ADDITIONS ---
+          'light': "#E9F1FA",  // Your Light Blue (Perfect for subtle panel backgrounds)
+          'bright': "#00ABE4", // Your Bright Blue (Great for clear call-to-actions/tabs)
         },
-        neutral: {
-          50: "#f8fafc", 100: "#f1f5f9", 200: "#e2e8f0", 300: "#cbd5e1",
-          400: "#94a3b8", 500: "#64748b", 600: "#475569", 700: "#334155",
-          800: "#1e293b", 900: "#0f172a",
+
+        accent: {
+          50: "#ecfdf5",
+          100: "#d1fae5",
+          500: "#0FFCBE", // Your exact Mint
+          600: "#0bdba5",
         },
+
+        // Mapped White explicitly here, alongside your custom light colors
+        surface: {
+          DEFAULT: "#ffffff", // Your plain White
+          light: "#ffffff",
+        },
+        background: {
+          DEFAULT: "#f8fafc",
+          alt: "#E9F1FA",     // Utilizing your Light Blue as an alternate background option
+        },
+
+        success: "#10b981",
+        warning: "#f59e0b",
+        danger: "#ef4444",
       },
+
       borderRadius: {
-        'xl': '0.75rem',
-        '2xl': '1rem',
+        xl: "16px",
+        "2xl": "24px",
+        "3xl": "32px",
+      },
+
+      boxShadow: {
+        card: "0 10px 25px rgba(15,23,42,.08)",
+        hover: "0 20px 40px rgba(15,23,42,.12)",
+        glow: "0 0 25px rgba(16,110,190,.15)",
       },
     },
   },
