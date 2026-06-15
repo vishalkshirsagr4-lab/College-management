@@ -3,6 +3,6 @@ const router = expess.Router();
 
 const { login, getProfile } = require('../controlls/authControl');
 
-router.post('/', login);
+router.post('/login', login);
 
 module.exports = router;
