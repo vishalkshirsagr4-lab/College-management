@@ -89,65 +89,77 @@ function AppRoutes() {
         </div>
       }
     >
-      <Routes>
-    
-        
-        {/* AUTH INTERCEPT REDIRECT POINT */}
-        <Route path="/explore-gateway" element={<RoleRedirector />} />
-        <Route path="/login" element={<Login />} />
+     <Routes>
+  {/* Root Route */}
+  {/* <Route path="/" element={<Navigate to="/login" replace />} /> */}
 
-        <Route element={<AppLayout />}>
-          {/* ADMIN */}
-          <Route element={<RequireAuth role={ROLES.ADMIN} />}>
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/students" element={<StudentAdmin />} />
-            <Route path="/admin/subjects" element={<SubjectsPage />} />
-            <Route path="/admin/faculty" element={<FacultyListPage />} />
-            <Route path="/admin/faculty/create" element={<CreateFacultyPage />} />
-            <Route path="/admin/faculty/:facultyId" element={<FacultyDetailsPage />} />
-            <Route path="/admin/faculty/:facultyId/edit-subjects" element={<EditFacultySubjectsPage />} />
-            <Route path="/admin/assign-faculty" element={<Placeholder title="Assign Faculty" />} />
-            <Route path="/admin/exams" element={<AdminExamManager />} />
-            <Route path="/admin/notifications" element={<AdminNotification />} />
-            <Route path="/admin/student/create" element={<CreateStudentPage />} />
-            <Route path="/admin/students/:studentId" element={<StudentDetailsPage />} />
-            <Route path="/admin/timetable" element={<TimetablePage />} />
-          </Route>
+    <Route path="/" element={<Navigate to="/login" replace />} />
 
-          {/* FACULTY */}
-          <Route element={<RequireAuth role={ROLES.FACULTY} />}>
-            <Route path="/faculty" element={<FacultyDashboard />} />
-            <Route path="/faculty/subjects" element={<Placeholder title="My Subjects" />} />
-            <Route path="/faculty/attendance" element={<FacultyAttendence/>} />
-            <Route path="/faculty/assignments" element={<FacultyAssignment/>} />
-            <Route path="/faculty/marks" element={<FacultyExam/>} />
-            <Route path="/faculty/exams-syllabus" element={<Placeholder title="Exams + Syllabus" />} />
-            <Route path="/faculty/notifications" element={<Placeholder title="Notifications" />} />
-            <Route path="/faculty/profile" element={<FacultyProfile/>} />
-            <Route path="/faculty/students" element={ <FaculyStudents/> } />
-            <Route path="/faculty/Timetable" element={ <FacultyTimeTable/> } />
-            <Route path="/faculty/Notification" element={ <FacultyNotification/> } />
-            <Route path="/faculty/Notification/Feed" element = { <FacultyreadNotification/> } />
-          </Route>
 
-          {/* STUDENT */}
-          <Route element={<RequireAuth role={ROLES.STUDENT} />}>
-            <Route path="/student" element={<StudentDashboard />} />
-            <Route path="/student/attendance" element={<StudentAttendence/>} />
-            <Route path="/student/assignments" element={<Placeholder title="Assignments" />} />
-            <Route path="/student/exams" element={<StudentExams />} />
-            <Route path="/student/exams/:examId" element={<StudentExam />} />
-            <Route path="/student/exams/:examId/result" element={<StudentResult />} />
-            <Route path="/student/results" element={<StudentResult />} />
-            <Route path="/student/notifications" element={<StudentNotification />} />
-            <Route path="/student/Timetable" element={ <StudentTimeTable/> } />
-            <Route path="/student/profile" element= { <StudentProfile/> } />
-            <Route path="/student/assignment" element = { <StudentAssignment/> } />
-          </Route>
-          
-          <Route path="*" element={<NotFound />} />
-        </Route>
-      </Routes>
+  {/* Login */}
+  <Route path="/login" element={<Login />} />
+
+  {/* Role Redirect */}
+  <Route path="/explore-gateway" element={<RoleRedirector />} />
+
+  <Route element={<AppLayout />}>
+    {/* ADMIN */}
+    <Route element={<RequireAuth role={ROLES.ADMIN} />}>
+      <Route path="/admin" element={<AdminDashboard />} />
+      <Route path="/admin/students" element={<StudentAdmin />} />
+      <Route path="/admin/subjects" element={<SubjectsPage />} />
+      <Route path="/admin/faculty" element={<FacultyListPage />} />
+      <Route path="/admin/faculty/create" element={<CreateFacultyPage />} />
+      <Route path="/admin/faculty/:facultyId" element={<FacultyDetailsPage />} />
+      <Route
+        path="/admin/faculty/:facultyId/edit-subjects"
+        element={<EditFacultySubjectsPage />}
+      />
+      <Route path="/admin/assign-faculty" element={<Placeholder title="Assign Faculty" />} />
+      <Route path="/admin/exams" element={<AdminExamManager />} />
+      <Route path="/admin/notifications" element={<AdminNotification />} />
+      <Route path="/admin/student/create" element={<CreateStudentPage />} />
+      <Route path="/admin/students/:studentId" element={<StudentDetailsPage />} />
+      <Route path="/admin/timetable" element={<TimetablePage />} />
+    </Route>
+
+    {/* FACULTY */}
+    <Route element={<RequireAuth role={ROLES.FACULTY} />}>
+      <Route path="/faculty" element={<FacultyDashboard />} />
+      <Route path="/faculty/subjects" element={<Placeholder title="My Subjects" />} />
+      <Route path="/faculty/attendance" element={<FacultyAttendence />} />
+      <Route path="/faculty/assignments" element={<FacultyAssignment />} />
+      <Route path="/faculty/marks" element={<FacultyExam />} />
+      <Route path="/faculty/exams-syllabus" element={<Placeholder title="Exams + Syllabus" />} />
+      <Route path="/faculty/profile" element={<FacultyProfile />} />
+      <Route path="/faculty/students" element={<FaculyStudents />} />
+
+      {/* Fixed lowercase routes */}
+      <Route path="/faculty/timetable" element={<FacultyTimeTable />} />
+      <Route path="/faculty/notification" element={<FacultyNotification />} />
+      <Route path="/faculty/notification/feed" element={<FacultyreadNotification />} />
+    </Route>
+
+    {/* STUDENT */}
+    <Route element={<RequireAuth role={ROLES.STUDENT} />}>
+      <Route path="/student" element={<StudentDashboard />} />
+      <Route path="/student/attendance" element={<StudentAttendence />} />
+      <Route path="/student/assignment" element={<StudentAssignment />} />
+      <Route path="/student/exams" element={<StudentExams />} />
+      <Route path="/student/exams/:examId" element={<StudentExam />} />
+      <Route path="/student/exams/:examId/result" element={<StudentResult />} />
+      <Route path="/student/results" element={<StudentResult />} />
+      <Route path="/student/notifications" element={<StudentNotification />} />
+      <Route path="/student/profile" element={<StudentProfile />} />
+
+      {/* Fixed lowercase route */}
+      <Route path="/student/timetable" element={<StudentTimeTable />} />
+    </Route>
+
+    {/* 404 Route - Keep Last */}
+    <Route path="*" element={<Navigate to="/login" replace />} />
+  </Route>
+</Routes>
     </Suspense>
   );
 }
