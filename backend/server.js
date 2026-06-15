@@ -4,7 +4,7 @@ const cookieParser = require("cookie-parser");
 const connectDB = require("./src/config/db");
 const seedAdmin = require("./src/scripts/seedAdmin");
 
-const authRoutes = require("./src/routes/authRoutes");
+const authRoutes = require("./src/routes/authroutes");
 const adminRoutes = require("./src/routes/adminRoute");
 const facultyRoutes = require("./src/routes/facultyRoute");
 const studentRoutes = require("./src/routes/studentRoute");
