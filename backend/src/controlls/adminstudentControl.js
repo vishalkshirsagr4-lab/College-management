@@ -4,6 +4,9 @@ const Student = require("../models/student");
 const bcrypt = require("bcryptjs");
 const { deleteFromS3 } = require("../config/s3");
 
+// ==========================================
+// 1. CREATE STUDENT
+// ==========================================
 const createStudent = async (req, res) => {
   let createdUser = null;
 
@@ -152,39 +155,193 @@ const createStudent = async (req, res) => {
   }
 };
 
+// ==========================================
+// 2. UPDATE STUDENT (FULLY RESOLVED FOR NAME)
+// ==========================================
 const updateStudent = async (req, res) => {
   try {
     const { studentId } = req.params;
 
-    // Defensive programming: Do not allow direct payload updates to mutable systems identifiers blindly
-    const { userID, loginID, rollNo, ...updatableFields } = req.body;
+    const {
+      name,
+      email,
+      loginID,
+      rollNo,
+      ...studentFields
+    } = req.body;
 
-    const updatedStudent = await Student.findByIdAndUpdate(
-      studentId,
-      { $set: updatableFields },
-      { new: true, runValidators: true }
-    );
+    // Find existing student
+    const targetStudent = await Student.findById(studentId);
 
-    if (!updatedStudent) {
+    if (!targetStudent) {
       return res.status(404).json({
         success: false,
         message: "Student not found",
       });
     }
 
-    res.status(200).json({
+    // =====================================
+    // UPDATE USER COLLECTION
+    // =====================================
+    if (targetStudent.userID) {
+      const userUpdateFields = {};
+
+      if (name !== undefined) {
+        userUpdateFields.name = String(name).trim();
+      }
+
+      if (email !== undefined) {
+        const processedEmail = String(email)
+          .trim()
+          .toLowerCase();
+
+        const emailExists = await User.findOne({
+          email: processedEmail,
+          _id: { $ne: targetStudent.userID },
+        });
+
+        if (emailExists) {
+          return res.status(400).json({
+            success: false,
+            message: "Email already exists",
+          });
+        }
+
+        userUpdateFields.email = processedEmail;
+      }
+
+      if (loginID !== undefined) {
+        const loginExists = await User.findOne({
+          loginID,
+          _id: { $ne: targetStudent.userID },
+        });
+
+        if (loginExists) {
+          return res.status(400).json({
+            success: false,
+            message: "Login ID already exists",
+          });
+        }
+
+        userUpdateFields.loginID = loginID;
+        studentFields.loginID = loginID;
+      }
+
+      if (Object.keys(userUpdateFields).length > 0) {
+        const updatedUser = await User.findByIdAndUpdate(
+          targetStudent.userID,
+          {
+            $set: userUpdateFields,
+          },
+          {
+            new: true,
+            runValidators: true,
+          }
+        );
+
+        console.log("UPDATED USER =>", updatedUser);
+      }
+    }
+
+    // =====================================
+    // ROLL NUMBER CHECK
+    // =====================================
+    if (
+      rollNo !== undefined &&
+      rollNo !== targetStudent.rollNo
+    ) {
+      const existingRollNo = await Student.findOne({
+        rollNo,
+        _id: { $ne: studentId },
+      });
+
+      if (existingRollNo) {
+        return res.status(400).json({
+          success: false,
+          message: "Roll Number already exists",
+        });
+      }
+
+      studentFields.rollNo = rollNo;
+    }
+
+    // =====================================
+    // CLEAN DATA
+    // =====================================
+    if (studentFields.department) {
+      studentFields.department = String(
+        studentFields.department
+      )
+        .trim()
+        .toUpperCase();
+    }
+
+    if (studentFields.section) {
+      studentFields.section = String(
+        studentFields.section
+      )
+        .trim()
+        .toUpperCase();
+    }
+
+    if (
+      studentFields.semester !== undefined &&
+      studentFields.semester !== ""
+    ) {
+      studentFields.semester = Number(
+        studentFields.semester
+      );
+    }
+
+    // =====================================
+    // UPDATE STUDENT COLLECTION
+    // =====================================
+    await Student.findByIdAndUpdate(
+      studentId,
+      {
+        $set: studentFields,
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    // =====================================
+    // FETCH FRESH UPDATED DATA
+    // =====================================
+    const updatedStudent = await Student.findById(
+      studentId
+    ).populate(
+      "userID",
+      "name email loginID role isActive"
+    );
+
+    console.log(
+      "UPDATED STUDENT =>",
+      JSON.stringify(updatedStudent, null, 2)
+    );
+
+    return res.status(200).json({
       success: true,
       message: "Student updated successfully",
       student: updatedStudent,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error(
+      "UPDATE STUDENT ERROR =>",
+      error
+    );
+
+    return res.status(500).json({
       success: false,
       message: error.message,
     });
   }
 };
-
+// ==========================================
+// 3. DELETE STUDENT
+// ==========================================
 const deleteStudent = async (req, res) => {
   try {
     const { studentId } = req.params;
@@ -225,6 +382,9 @@ const deleteStudent = async (req, res) => {
   }
 };
 
+// ==========================================
+// 4. RESET PASSWORD
+// ==========================================
 const resetPassword = async (req, res) => {
   try {
     const { userId, newPassword } = req.body;
@@ -256,6 +416,9 @@ const resetPassword = async (req, res) => {
   }
 };
 
+// ==========================================
+// 5. GET ALL STUDENTS
+// ==========================================
 const getAllStudents = async (req, res) => {
   try {
     const students = await Student.find().populate(
@@ -276,12 +439,19 @@ const getAllStudents = async (req, res) => {
   }
 };
 
+// ==========================================
+// 6. GET STUDENT BY ID
+// ==========================================
 const getStudentById = async (req, res) => {
   try {
     const { studentId } = req.params;
-    const student = await Student.findById(studentId).populate(
-      "userID",
-      "name email loginID role"
+
+    const student = await Student.findById(studentId)
+      .populate("userID", "name email loginID role");
+
+    console.log(
+      "GET STUDENT =>",
+      JSON.stringify(student, null, 2)
     );
 
     if (!student) {
@@ -291,18 +461,24 @@ const getStudentById = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       student,
     });
+
   } catch (error) {
-    res.status(500).json({
+    console.error("GET STUDENT ERROR =>", error);
+
+    return res.status(500).json({
       success: false,
       message: error.message,
     });
   }
 };
 
+// ==========================================
+// 7. UPDATE PROFILE IMAGE
+// ==========================================
 const updateStudentProfileImage = async (req, res) => {
   try {
     const { studentId } = req.params;
@@ -322,7 +498,6 @@ const updateStudentProfileImage = async (req, res) => {
       });
     }
 
-    // Delete previous asset tracking info out of bucket store
     const previousAsset = student.profileKey || student.profileImage;
     if (previousAsset) {
       try {
@@ -332,7 +507,6 @@ const updateStudentProfileImage = async (req, res) => {
       }
     }
 
-    // Save configuration references securely
     student.profileImage = req.file.location || req.file.url || "";
     student.profileKey = req.file.key || "";
     await student.save();

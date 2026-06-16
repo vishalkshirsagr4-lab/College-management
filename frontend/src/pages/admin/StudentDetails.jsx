@@ -132,13 +132,42 @@ export default function StudentDetailsPage() {
     bloodGroup: "",
   });
   
-  // Tab Builder States (Faculty-style selection system)
+  // Tab Builder States
   const [builderSemester, setBuilderSemester] = useState(null);
   const [selectedSubjects, setSelectedSubjects] = useState(new Set());
   const [previewUrl, setPreviewUrl] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  // Fetch initial student & master subject records
+  const syncFormState = useCallback((studentDoc) => {
+    if (!studentDoc) return;
+
+    const resolvedName = studentDoc.userID?.name || studentDoc.name || "";
+    const resolvedEmail = studentDoc.userID?.email || studentDoc.email || "";
+
+    setForm((prev) => ({
+      name: resolvedName || prev.name || "",
+      email: resolvedEmail || prev.email || "",
+      department: studentDoc.department || "",
+      semester: String(studentDoc.semester || ""),
+      section: studentDoc.section || "",
+      rollNo: studentDoc.rollNo || "",
+      phone: studentDoc.phone || "",
+      address: studentDoc.address || "",
+      admissionYear: String(studentDoc.admissionYear || ""),
+      gender: studentDoc.gender || "",
+      dateOfBirth: studentDoc.dateOfBirth ? studentDoc.dateOfBirth.split("T")[0] : "",
+      bloodGroup: studentDoc.bloodGroup || "",
+    }));
+
+    if (studentDoc.semester) {
+      setBuilderSemester(Number(studentDoc.semester));
+    }
+
+    const hydratedSubs = Array.isArray(studentDoc.subjects) ? studentDoc.subjects : [];
+    setSelectedSubjects(new Set(hydratedSubs.map(s => normalizeSubjectName(s))));
+    setPreviewUrl(studentDoc.profileImage || "");
+  }, []);
+
   const fetchInitialData = useCallback(async () => {
     try {
       setLoading(true);
@@ -153,34 +182,11 @@ export default function StudentDetailsPage() {
       const subjectsData = subjectsRes.data?.subjects || subjectsRes.data || [];
       setAllSubjects(subjectsData);
 
-      const studentDoc = studentRes.data?.student || studentRes.data?.data?.student;
+      const studentDoc = studentRes.data?.student || studentRes.data?.data?.student || studentRes.data;
       if (!studentDoc) throw new Error("Student profile payload structured unexpectedly.");
 
       setStudent(studentDoc);
-
-      setForm({
-        name: studentDoc.userID?.name || "",
-        email: studentDoc.userID?.email || "",
-        department: studentDoc.department || "",
-        semester: String(studentDoc.semester || ""),
-        section: studentDoc.section || "",
-        rollNo: studentDoc.rollNo || "",
-        phone: studentDoc.phone || "",
-        address: studentDoc.address || "",
-        admissionYear: String(studentDoc.admissionYear || ""),
-        gender: studentDoc.gender || "",
-        dateOfBirth: studentDoc.dateOfBirth ? studentDoc.dateOfBirth.split("T")[0] : "",
-        bloodGroup: studentDoc.bloodGroup || "",
-      });
-
-      // Synchronize initially selected tab matching current dynamic semester allocation
-      if (studentDoc.semester) {
-        setBuilderSemester(Number(studentDoc.semester));
-      }
-
-      const hydratedSubs = Array.isArray(studentDoc.subjects) ? studentDoc.subjects : [];
-      setSelectedSubjects(new Set(hydratedSubs.map(s => normalizeSubjectName(s))));
-      setPreviewUrl(studentDoc.profileImage || "");
+      syncFormState(studentDoc);
 
     } catch (err) {
       console.error("Initialization error:", err);
@@ -189,13 +195,12 @@ export default function StudentDetailsPage() {
       setLoading(false);
       setLoadingSubjects(false);
     }
-  }, [studentId]);
+  }, [studentId, syncFormState]);
 
   useEffect(() => {
     fetchInitialData();
   }, [fetchInitialData]);
 
-  // Derive unique selection available semester tabs rows across all master subjects
   const semesters = useMemo(() => {
     const set = new Set();
     const dataArray = Array.isArray(allSubjects) ? allSubjects : [];
@@ -206,7 +211,6 @@ export default function StudentDetailsPage() {
     return Array.from(set).sort((a, b) => a - b);
   }, [allSubjects]);
 
-  // Derive target configuration properties for the chosen active tab
   const builderSemesterData = useMemo(() => {
     if (!builderSemester) return null;
     const semNum = Number(builderSemester);
@@ -226,15 +230,19 @@ export default function StudentDetailsPage() {
     };
   }, [allSubjects, builderSemester]);
 
-  // Sync structural mapping updates if a tab switches while editing
   useEffect(() => {
     if (builderSemesterData && isEditing) {
-      setForm((prev) => ({
-        ...prev,
-        department: builderSemesterData.department,
-        semester: String(builderSemesterData.semester),
-      }));
-      setSelectedSubjects(new Set()); // Reset selected courses on semester switch
+      setForm((prev) => {
+        if (Number(prev.semester) === Number(builderSemesterData.semester) && prev.department === builderSemesterData.department) {
+          return prev;
+        }
+        setSelectedSubjects(new Set()); 
+        return {
+          ...prev,
+          department: builderSemesterData.department,
+          semester: String(builderSemesterData.semester),
+        };
+      });
     }
   }, [builderSemester, builderSemesterData, isEditing]);
 
@@ -252,7 +260,6 @@ export default function StudentDetailsPage() {
     });
   };
 
-  // Profile image upload handler
   const handleImageFileChange = async (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -280,14 +287,67 @@ export default function StudentDetailsPage() {
     }
   };
 
-  // Put / Update form processing logic
+  // --- STRICT FORM VALIDATION LOGIC FOR ALL FIELDS ---
+  const validateFormFields = () => {
+    // 1. Name validation
+    if (!form.name.trim()) return "Student Name is required.";
+    if (form.name.trim().length < 3) return "Student Name must be at least 3 characters long.";
+    if (/^\d+$/.test(form.name.trim())) return "Student Name cannot be just numbers.";
+    if (!/^[A-Za-z\s.]+$/.test(form.name.trim())) return "Name can only contain alphabets, dots, and spaces.";
+
+    // 2. Email validation
+    if (!form.email.trim()) return "Email address is required.";
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email.trim())) return "Please enter a valid e-mail structure.";
+
+    // 3. Department validation
+    if (!form.department.trim()) return "Department is required. Choose a Semester upper tab option.";
+
+    // 4. Semester validation
+    if (!form.semester.trim()) return "Academic Semester mapping is required.";
+
+    // 5. Section validation
+    if (!form.section.trim()) return "Class Section Assignment Stream is required.";
+    if (form.section.trim().length < 1) return "Section string cannot be blank.";
+
+    // 6. Roll Number validation
+    if (!form.rollNo.trim()) return "Institutional Roll Registry Key is required.";
+    if (form.rollNo.trim().length < 2) return "Roll Number must be at least 2 characters.";
+
+    // 7. Phone Number validation
+    if (!form.phone.trim()) return "Primary Contact Phone is required.";
+    const phoneClean = form.phone.trim();
+    if (!/^\d{10}$/.test(phoneClean)) return "Phone number must be exactly 10 digits without text.";
+
+    // 8. Admission Year validation
+    if (!form.admissionYear.trim()) return "Year of Admission Frame is required.";
+    const currentYear = new Date().getFullYear();
+    const yearNum = Number(form.admissionYear);
+    if (isNaN(yearNum) || yearNum < 1990 || yearNum > currentYear + 1) {
+      return `Please input a realistic admission year framework (1990 - ${currentYear + 1}).`;
+    }
+
+    // 9. Course Checklist validation
+    if (selectedSubjects.size === 0) return "Please enroll the student in at least one course unit block.";
+
+    // Optional Fields Check (If typed, validate string data lengths)
+    if (form.address.trim() && form.address.trim().length < 5) {
+      return "Optional Permanent Address summary description must be at least 5 characters long.";
+    }
+
+    return null; // Form data clean
+  };
+
   const handleUpdateSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
 
-    if (!form.name.trim() || !form.email.trim() || !form.rollNo.trim()) {
-      setErrorMessage("Please fill out all fundamental field forms before executing profile changes.");
+    // Trigger strict custom validations before API payload delivery runs
+    const validationError = validateFormFields();
+    if (validationError) {
+      setErrorMessage(validationError);
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
@@ -296,21 +356,34 @@ export default function StudentDetailsPage() {
 
       const putPayload = {
         ...form,
+        name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
         department: form.department.trim().toUpperCase(),
         section: form.section.trim().toUpperCase(),
         semester: Number(form.semester),
         subjects: Array.from(selectedSubjects),
+        admissionYear: Number(form.admissionYear),
+        phone: form.phone.trim(),
+        address: form.address.trim(),
       };
 
       const res = await api.put(`/api/admin/student/${studentId}`, putPayload);
+      const responseData = res.data || res;
+      const updatedData = responseData?.student;
 
-      if (res.data?.success || res.success) {
+      if (responseData?.success || res.success || updatedData) {
         setSuccessMessage("Student metrics modified successfully.");
         setIsEditing(false);
-        fetchInitialData();
+        
+        if (updatedData) {
+          setStudent(updatedData);
+          syncFormState(updatedData);
+        } else {
+          fetchInitialData();
+        }
       }
     } catch (err) {
-      console.error("Operational rewrite failure:", err);
+      console.error("API ROUTE ERROR:", err);
       setErrorMessage(err.response?.data?.message || "Internal network error mapping server payloads.");
     } finally {
       setSaving(false);
@@ -354,9 +427,6 @@ export default function StudentDetailsPage() {
                   {form.rollNo || "No Roll"}
                 </span>
               </div>
-              <p className="mt-1 text-xs md:text-sm text-slate-500">
-                Unique Student Registry Key: <span className="font-mono font-medium text-slate-700">{studentId}</span>
-              </p>
             </div>
           </div>
 
@@ -398,8 +468,8 @@ export default function StudentDetailsPage() {
 
         {/* Global Operational Message Feed Drawers */}
         {errorMessage && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 font-medium">
-            {errorMessage}
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 font-bold tracking-wide animate-pulse">
+            ⚠️ {errorMessage}
           </div>
         )}
         {successMessage && (
@@ -411,10 +481,9 @@ export default function StudentDetailsPage() {
         {/* Split Grid Layout Panels Shell */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           
-          {/* LEFT INTERFACE COLUMN PANEL: Account identities profiles metadata */}
+          {/* LEFT COLUMN: Profiling metadata */}
           <div className="lg:col-span-5 space-y-6">
             
-            {/* Visual Avatar Picture Display Unit Card */}
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm text-center relative overflow-hidden">
               <div className="absolute top-0 inset-x-0 h-20 bg-gradient-to-r from-blue-500 to-indigo-600 opacity-80" />
               <div className="relative pt-6">
@@ -441,7 +510,7 @@ export default function StudentDetailsPage() {
               </div>
             </div>
 
-            {/* Account Logins Management */}
+            {/* Account Credentials */}
             <SectionCard title="Account Credentials">
               <div className="space-y-4">
                 <Field label="Display Name Account String">
@@ -467,7 +536,7 @@ export default function StudentDetailsPage() {
                 <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-2.5 text-xs text-slate-600 font-medium">
                   <div className="flex justify-between">
                     <span>Platform Assigned Login ID:</span>
-                    <span className="font-mono font-bold text-slate-900">{student?.userID?.loginID || "N/A"}</span>
+                    <span className="font-mono font-bold text-slate-900">{student?.userID?.loginID || student?.loginID || "N/A"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Database Synchronize Update:</span>
@@ -478,13 +547,10 @@ export default function StudentDetailsPage() {
             </SectionCard>
           </div>
 
-          {/* RIGHT INTERFACE COLUMN PANEL: Academic tracking configuration profiles and course assignment list checkboxes */}
+          {/* RIGHT COLUMN: Academic mapping */}
           <div className="lg:col-span-7 space-y-6">
             
-            {/* Structural Course Mapping Cluster Card */}
             <SectionCard title="Academic Mapping Framework">
-              
-              {/* Faculty style Tabbed Row Layout Controller Section */}
               <div className="mb-5 bg-slate-50 p-3 rounded-xl border border-slate-100">
                 <label className="mb-2 block text-xs font-bold text-slate-500 uppercase tracking-wider">
                   {isEditing ? "Select Active Course Term Semester Tab" : "Current Track Semester"}
@@ -518,7 +584,6 @@ export default function StudentDetailsPage() {
                 )}
               </div>
 
-              {/* Grid System mapping fields */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 pt-2">
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold text-slate-500 uppercase tracking-wider">Assigned Department</label>
@@ -526,7 +591,7 @@ export default function StudentDetailsPage() {
                     type="text"
                     value={form.department}
                     placeholder="Select an upper tab row parameter"
-                    disabled // Auto-driven from database semester mappings layout specs
+                    disabled 
                   />
                 </div>
 
@@ -554,7 +619,7 @@ export default function StudentDetailsPage() {
               </div>
             </SectionCard>
 
-            {/* Live Interactive Checked Syllabus Course Assignment Matrix Card (FACULTY-STYLE) */}
+            {/* Syllabus Assignment Checklist */}
             <SectionCard 
               title="Curriculum Course Enrollment Units"
               right={
@@ -594,8 +659,8 @@ export default function StudentDetailsPage() {
               )}
             </SectionCard>
 
-            {/* Extended Demographics Meta Matrix parameters Information Field Card */}
-            <SectionCard title="Personal Registry Metadata">
+            {/* Permanent Registry Metadata */}
+            <SectionCard title="Permanent Registry Metadata">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label="Primary Contact Phone">
                   <Input
@@ -603,7 +668,7 @@ export default function StudentDetailsPage() {
                     value={form.phone}
                     onChange={(e) => handleFieldChange("phone", e.target.value)}
                     disabled={!isEditing || saving}
-                    placeholder="9999999999"
+                    placeholder="10-digit phone number"
                   />
                 </Field>
 

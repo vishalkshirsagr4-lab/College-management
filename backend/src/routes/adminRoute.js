@@ -56,6 +56,7 @@ const { getSemesterAttendance } = require("../controlls/attendenceControl");
 
 // --- CORE STUDENT PORTAL ENDPOINTS ---
 router.post("/student", authMiddleware, upload.single("profileImage"), roleMiddleware("admin"), createStudent);
+// Change "/student/:studentId" to "/students/:studentId"
 router.put("/student/:studentId", authMiddleware, roleMiddleware("admin"), updateStudent);
 router.delete("/student/:studentId", authMiddleware, roleMiddleware("admin"), deleteStudent);
 router.get("/students", authMiddleware, roleMiddleware("admin"), getAllStudents);

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
 import { toast } from "react-toastify";
 
+// Helper components with fixed prop setups
 function Field({ label, children }) {
   return (
     <div>
@@ -17,21 +18,17 @@ function Field({ label, children }) {
 function Input({ className = "", ...props }) {
   return (
     <input
-      {...props}
       className={
         "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:opacity-60 " +
         className
       }
+      {...props}
     />
   );
 }
 
-function PhoneInput({ ...props }) {
-  return <Input inputMode="numeric" {...props} />;
-}
-
-function normalizeSubjectName(s) {
-  return String(s ?? "").trim();
+function PhoneInput({ className = "", ...props }) {
+  return <Input type="text" inputMode="numeric" pattern="[0-9]*" className={className} {...props} />;
 }
 
 function Checkbox({ checked, onChange, label, sublabel }) {
@@ -58,6 +55,10 @@ function Checkbox({ checked, onChange, label, sublabel }) {
       </div>
     </label>
   );
+}
+
+function normalizeSubjectName(s) {
+  return String(s ?? "").trim();
 }
 
 function uniqStrings(arr) {
@@ -110,16 +111,16 @@ export default function CreateFacultyPage() {
 
   const [previewUrl, setPreviewUrl] = useState("");
 
-  // Teaching assignments builder state (REQUIRED)
-  const [selectedSemester, setSelectedSemester] = useState(null); // number|null
-  const [selectedSubjects, setSelectedSubjects] = useState(new Set()); // Set<string>
-  const [assignments, setAssignments] = useState([]); // [{department, semester, section, subjects}]
-  const [editingIndex, setEditingIndex] = useState(null); // number|null
+  // Teaching assignments builder state
+  const [selectedSemester, setSelectedSemester] = useState(null); 
+  const [selectedSubjects, setSelectedSubjects] = useState(new Set()); 
+  const [assignments, setAssignments] = useState([]); 
+  const [editingIndex, setEditingIndex] = useState(null); 
 
   const [sectionInput, setSectionInput] = useState("");
   const [assignmentSubjectsError, setAssignmentSubjectsError] = useState("");
 
-  // Derive unique array of numbers for the semester tabs layout
+  // Semesters layout logic
   const semesters = useMemo(() => {
     const set = new Set();
     const dataArray = Array.isArray(subjects) ? subjects : [];
@@ -130,7 +131,7 @@ export default function CreateFacultyPage() {
     return Array.from(set).sort((a, b) => a - b);
   }, [subjects]);
 
-  // Derive all info for the selected semester tab
+  // Selected semester information details
   const selectedSemesterData = useMemo(() => {
     if (selectedSemester == null) return null;
     const semNum = Number(selectedSemester);
@@ -153,7 +154,7 @@ export default function CreateFacultyPage() {
     };
   }, [subjects, selectedSemester]);
 
-  // Reset or normalize building form state when switching semester tabs
+  // Reset parameters when changing semesters
   useEffect(() => {
     setSelectedSubjects((prev) => {
       if (!selectedSemesterData?.subjects?.length) return new Set();
@@ -170,14 +171,13 @@ export default function CreateFacultyPage() {
     setAssignmentSubjectsError("");
   }, [selectedSemester, selectedSemesterData]);
 
-  // Load subject options from API
+  // Fetch API subjects data
   useEffect(() => {
     const fetchSubjects = async () => {
       try {
         setLoadingSubjects(true);
         setSubjectsError("");
         const res = await api.get("/api/admin/subjects");
-        // Handles if backend sends payload encapsulated inside an object or plain array
         const fetchedData = res.data?.subjects || res.data || [];
         setSubjects(fetchedData);
       } catch (e) {
@@ -193,7 +193,7 @@ export default function CreateFacultyPage() {
     fetchSubjects();
   }, []);
 
-  // Handle local image preview conversions
+  // Image upload rendering triggers
   useEffect(() => {
     if (!form.profileImageFile) return;
     const url = URL.createObjectURL(form.profileImageFile);
@@ -201,7 +201,6 @@ export default function CreateFacultyPage() {
     return () => URL.revokeObjectURL(url);
   }, [form.profileImageFile]);
 
-  // Validates if the builder inputs are completely filled out
   const canAdd = useMemo(() => {
     const secOk = String(sectionInput).trim().length > 0;
     const subsOk = selectedSubjects.size > 0;
@@ -261,7 +260,6 @@ export default function CreateFacultyPage() {
     }
 
     setAssignments((prev) => {
-      // Prevent duplicate combinations of Department/Semester/Section
       const exists = prev.some(
         (a) =>
           a.department === built.value.department &&
@@ -354,15 +352,42 @@ export default function CreateFacultyPage() {
     }));
   }, [assignments]);
 
+  // STAGE 1 & STAGE 2 IN-DEPTH COMPLETE VALIDATIONS (BLOCKS SHORT VALUES & NUMERIC OVERRIDES)
   const validatePayload = () => {
-    if (!form.name.trim()) return "Name is required.";
-    if (!form.email.trim()) return "Email is required.";
+    // 1. Full Name Validations
+    if (!form.name.trim()) return "Full Name is required.";
+    if (form.name.trim().length < 3) return "Full Name must be at least 3 characters.";
+    if (!/^[A-Za-z\s.]+$/.test(form.name.trim())) return "Full Name should contain only letters and standard spacing.";
+
+    // 2. Email Address Validations
+    if (!form.email.trim()) return "Email address is required.";
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email.trim())) return "Enter a valid email address.";
+
+    // 3. Login ID Validations
     if (!form.loginID.trim()) return "Login ID is required.";
-    if (!form.password.trim()) return "Password is required.";
+    if (form.loginID.trim().length < 12) return "Login ID must be at least 3 characters.";
+
+    // 4. Password Validations
+    if (!form.password) return "Password is required.";
+    if (form.password.length < 6) return "Password must be at least 6 characters long.";
+
+    // 5. Department Validations
     if (!form.department.trim()) return "Department is required.";
+    if (!/^[A-Za-z\s-]+$/.test(form.department.trim())) return "Department should contain only letters.";
+
+    // 6. Designation Validations
     if (!form.designation.trim()) return "Designation is required.";
-    if (!form.phone.trim()) return "Phone is required.";
-    if (!teachingAssignments.length) return "Add at least one teaching assignment.";
+    if (form.designation.trim().length < 6) return "Designation must be at least 3 characters.";
+
+    // 7. Phone Number Validations
+    if (!form.phone.trim()) return "Phone number is required.";
+    const phoneRegex = /^[0-9]{10}$/;
+    if (!phoneRegex.test(form.phone.trim())) return "Phone number must be exactly 10 digits.";
+
+    // 8. Teaching Assignments Setup Check
+    if (!teachingAssignments.length) return "Add at least one teaching assignment card on the right panel.";
+
     return "";
   };
 
@@ -373,6 +398,7 @@ export default function CreateFacultyPage() {
     const err = validatePayload();
     if (err) {
       setFormError(err);
+      toast.error(err);
       return;
     }
 
@@ -420,7 +446,7 @@ export default function CreateFacultyPage() {
   };
 
   return (
-    <div className="bg-slate-50">
+    <div className="bg-slate-50 min-h-screen">
       <div className="mx-auto max-w-7xl p-4 md:p-6">
 
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -446,7 +472,7 @@ export default function CreateFacultyPage() {
         </div>
 
         {formError ? (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 font-semibold animate-pulse">
             {formError}
           </div>
         ) : null}
@@ -470,7 +496,7 @@ export default function CreateFacultyPage() {
                     <Input
                       value={form.name}
                       onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                      placeholder="e.g., Rahul"
+                      placeholder="e.g., Rahul Kumar"
                       required
                       disabled={submitting}
                     />
@@ -502,7 +528,7 @@ export default function CreateFacultyPage() {
                       type="password"
                       value={form.password}
                       onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
-                      placeholder="Set password"
+                      placeholder="Set password (min 6 chars)"
                       required
                       disabled={submitting}
                     />
@@ -532,7 +558,7 @@ export default function CreateFacultyPage() {
                     <PhoneInput
                       value={form.phone}
                       onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
-                      placeholder="9999999999"
+                      placeholder="10-digit number"
                       required
                       disabled={submitting}
                     />
@@ -565,9 +591,6 @@ export default function CreateFacultyPage() {
                         disabled={submitting}
                       />
                     </div>
-                    <div className="mt-2 text-xs text-slate-500">
-                      Sent as <span className="font-mono">profileImage</span>.
-                    </div>
                   </div>
                 </div>
 
@@ -585,7 +608,7 @@ export default function CreateFacultyPage() {
             </SectionCard>
           </div>
 
-          {/* Right panel: Modern semester tabs dynamic assignment builder */}
+          {/* Right panel: Dynamic assignment builder */}
           <div className="lg:col-span-7">
             <SectionCard
               title="Teaching Assignments"
@@ -596,7 +619,7 @@ export default function CreateFacultyPage() {
               }
             >
               <div className="rounded-xl border border-slate-200 bg-white p-4">
-                {/* Semester choice buttons wrapper */}
+                {/* Semester selectors */}
                 <div className="mb-4">
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <div>
@@ -637,7 +660,7 @@ export default function CreateFacultyPage() {
                   </div>
                 </div>
 
-                {/* Assignment context values wrapper */}
+                {/* Assignment dynamic parameters */}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label className="mb-2 block text-xs font-semibold text-slate-600">Department</label>
@@ -665,7 +688,7 @@ export default function CreateFacultyPage() {
                   </div>
                 ) : null}
 
-                {/* Unified Subject List checkbox view */}
+                {/* Subjects dynamic selector layout view */}
                 <div className="mt-4">
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <div>
@@ -711,7 +734,7 @@ export default function CreateFacultyPage() {
                   )}
                 </div>
 
-                {/* Trigger control logic buttons section */}
+                {/* Action Trigger control parameters */}
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="text-xs text-slate-500">Add or edit an assignment card.</div>
 
@@ -747,7 +770,7 @@ export default function CreateFacultyPage() {
                 </div>
               </div>
 
-              {/* Assignment Stack Cards Presentation Layout */}
+              {/* Assignment Stack Cards Layout View */}
               <div className="mt-5">
                 {assignments.length === 0 ? (
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-center text-xs text-slate-500">
@@ -808,9 +831,7 @@ export default function CreateFacultyPage() {
                                 </span>
                               ))}
                             </div>
-                          ) : (
-                            <div className="mt-2 text-xs text-slate-400">—</div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     ))}
@@ -820,6 +841,7 @@ export default function CreateFacultyPage() {
             </SectionCard>
           </div>
         </div>
+
       </div>
     </div>
   );

@@ -45,7 +45,7 @@ export default {
 
         // Background Colors
         background: {
-          DEFAULT: "#f8fafc",
+          DEFAULT: "#9540bd",
           alt: "#f1f5f9",
           dark: "#e2e8f0",
         },

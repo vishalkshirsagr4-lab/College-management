@@ -52,6 +52,7 @@ const StudentResult = lazy(()=> import("./pages/student/StudentResultsPage"));
 const StudentNotification = lazy(()=> import("./pages/student/Notifications"));
 const StudentAssignment = lazy(()=> import("./pages/student/Assignment"));
 
+
 /* ================= HELPERS ================= */
 
 const Placeholder = ({ title }) => (
@@ -105,6 +106,7 @@ function AppRoutes() {
   <Route element={<AppLayout />}>
     {/* ADMIN */}
     <Route element={<RequireAuth role={ROLES.ADMIN} />}>
+
       <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/admin/students" element={<StudentAdmin />} />
       <Route path="/admin/subjects" element={<SubjectsPage />} />

@@ -80,7 +80,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
       >
         {/* Header - Fixed height */}
         <div className="h-16 flex items-center px-4 border-b border-slate-200 flex-none">
-          <Link to="/" className="font-semibold text-slate-900" onClick={close}>
+          <Link to="/admin" className="font-semibold text-slate-900" onClick={close}>
             🎓 College ERP
           </Link>
         </div>
@@ -92,7 +92,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
           ))}
         </nav>
 
-        {/* Profile - Footer area, not absolute anymore to prevent overflow */}
+       {/* { Profile - Footer area, not absolute anymore to prevent overflow
         <div className="p-3 border-t border-slate-200 flex-none">
           <Link
             to="/profile"
@@ -102,7 +102,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
             <span>👤</span>
             <span>Profile</span>
           </Link>
-        </div>
+        </div>} */}
       </aside>
     </>
   );
