@@ -37,22 +37,22 @@ const createStudent = async (req, res) => {
 
     console.log("[createStudent] body keys present:", Object.keys(req.body || {}));
     const {
-      name,
-      email,
-      loginID,
-      password,
-      department,
-      semester,
-      section,
-      rollNo,
-      phone,
-      address,
-      admissionYear,
-      gender,
-      dateOfBirth,
-      bloodGroup,
-    } = req.body;
-
+  name,
+  email,
+  loginID,
+  password,
+  department,
+  semester,
+  section,
+  rollNo,
+  phone,
+  address,
+  admissionYear,
+  gender,
+  dateOfBirth,
+  bloodGroup,
+  subjects,
+} = req.body;
     // Check if EITHER email OR loginID is already occupied
     const existingUser = await User.findOne({ $or: [{ email }, { loginID }] });
     if (existingUser) {
@@ -105,24 +105,33 @@ const createStudent = async (req, res) => {
       });
     }
 
-    const student = await Student.create({
-      userID: studentUserId,
-      profileImage,
-      profileKey,
-      department,
-      semester,
-      section,
-      rollNo,
-      loginID,
-      phone,
-      address,
-      admissionYear,
-      gender,
-      dateOfBirth,
-      bloodGroup,
-      subjects: [],
-    });
+    let parsedSubjects = [];
 
+if (subjects) {
+  try {
+    parsedSubjects = JSON.parse(subjects);
+  } catch (err) {
+    parsedSubjects = [];
+  }
+}
+
+    const student = await Student.create({
+  userID: studentUserId,
+  profileImage,
+  profileKey,
+  department,
+  semester,
+  section,
+  rollNo,
+  loginID,
+  phone,
+  address,
+  admissionYear,
+  gender,
+  dateOfBirth,
+  bloodGroup,
+  subjects: parsedSubjects,
+});
     return res.status(201).json({
       success: true,
       message: "Student created successfully",
