@@ -40,7 +40,7 @@ export default function AdminDashboard() {
       upcoming: list.length, 
       nextDate: list.length > 0 
         ? new Date(list[0].examDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) 
-        : "None" 
+        : "No Exams" 
     };
   }, [data.exams]);
 
